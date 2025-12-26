@@ -818,5 +818,293 @@ const decryptedData = decrypt(encryptedData, serverPrivateKey);
 
 ---
 
+## 🩸 Continuous Glucose Monitoring (CGM) Integration
+
+### Overview
+
+CGM devices provide continuous, real-time glucose readings throughout the day. They use sensors inserted under the skin that measure glucose levels in interstitial fluid every few minutes.
+
+### Popular CGM Devices
+
+#### 1. **Dexcom G6/G7**
+**Price:** $300-$500 (transmitter) + $300/month (sensors)  
+**Integration Method:** Dexcom Share API, BLE  
+**Data Captured:**
+- Glucose readings every 5 minutes
+- Trend arrows (rising, falling, stable)
+- Alerts (high/low glucose)
+- Time in range statistics
+
+**Connection Flow:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│              Dexcom CGM Data Flow                            │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────┐                    ┌─────────────┐
+│  Dexcom     │                    │  Mobile App │
+│  Transmitter│                    │  (Receiver) │
+│  (BLE)      │                    │             │
+└──────┬──────┘                    └──────┬──────┘
+       │                                   │
+       │ 1. BLE Connection                 │
+       │──────────────────────────────────▶│
+       │                                   │
+       │ 2. Glucose Reading (every 5 min) │
+       │──────────────────────────────────▶│
+       │    Value: 120 mg/dL                │
+       │    Trend: → (stable)              │
+       │                                   │
+       │ 3. Process & Buffer               │
+       │                                   │
+       │ 4. Upload to Health Tracker       │
+       │                                   │
+```
+
+**Mobile App Implementation:**
+```javascript
+// Dexcom G6/G7 BLE Integration
+import { BleManager } from 'react-native-ble-plx';
+
+const DEXCOM_SERVICE_UUID = '0000febc-0000-1000-8000-00805f9b34fb';
+const DEXCOM_GLUCOSE_CHAR_UUID = '0000febd-0000-1000-8000-00805f9b34fb';
+
+const manager = new BleManager();
+
+// Connect to Dexcom transmitter
+async function connectDexcom() {
+    manager.startDeviceScan([DEXCOM_SERVICE_UUID], null, async (error, device) => {
+        if (error) return;
+        
+        const connectedDevice = await device.connect();
+        await connectedDevice.discoverAllServicesAndCharacteristics();
+        
+        // Subscribe to glucose readings
+        connectedDevice.monitorCharacteristicForService(
+            DEXCOM_SERVICE_UUID,
+            DEXCOM_GLUCOSE_CHAR_UUID,
+            async (error, characteristic) => {
+                if (characteristic?.value) {
+                    const glucoseData = parseDexcomData(characteristic.value);
+                    
+                    // Send to Health Tracker
+                    await fetch('https://your-app.railway.app/api/cgm/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            device_id: 'dexcom_g6_abc123',
+                            device_type: 'dexcom_g6',
+                            connection_type: 'ble',
+                            data: {
+                                glucose_value: glucoseData.value,
+                                trend: glucoseData.trend,
+                                timestamp: new Date().toISOString(),
+                                alerts: glucoseData.alerts
+                            }
+                        })
+                    });
+                }
+            }
+        );
+    });
+}
+
+function parseDexcomData(hexValue) {
+    const bytes = hexToBytes(hexValue);
+    const glucoseValue = (bytes[0] << 8) | bytes[1];
+    const trend = ['none', 'rising', 'rising_fast', 'stable', 'falling', 'falling_fast'][bytes[2]];
+    
+    return {
+        value: glucoseValue,
+        trend: trend,
+        alerts: checkAlerts(glucoseValue)
+    };
+}
+
+function checkAlerts(glucose) {
+    const alerts = [];
+    if (glucose < 70) alerts.push({ type: 'low', severity: 'critical' });
+    if (glucose > 180) alerts.push({ type: 'high', severity: 'warning' });
+    if (glucose > 250) alerts.push({ type: 'very_high', severity: 'critical' });
+    return alerts;
+}
+```
+
+#### 2. **FreeStyle Libre 2/3 (Abbott)**
+**Price:** $70-$140 (sensor) + $70/month  
+**Integration Method:** NFC Tap, LibreView API  
+**Data Captured:**
+- Glucose readings every minute (Libre 3)
+- Historical data (up to 8 hours)
+- Trend graphs
+- Alerts (high/low)
+
+**Connection Flow:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│          FreeStyle Libre NFC Tap Flow                       │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────┐                    ┌─────────────┐
+│  Libre      │                    │  Mobile App │
+│  Sensor     │                    │  (Reader)  │
+│  (NFC Tag)  │                    │            │
+└──────┬──────┘                    └──────┬──────┘
+       │                                   │
+       │ 1. Tap sensor with mobile         │
+       │    (NFC field activated)          │
+       │◀──────────────────────────────────│
+       │                                   │
+       │ 2. Sensor responds with data      │
+       │──────────────────────────────────▶│
+       │    Glucose readings (8 hours)      │
+       │    Current value: 125 mg/dL        │
+       │                                   │
+       │ 3. Process readings               │
+       │                                   │
+       │ 4. Upload to Health Tracker       │
+       │                                   │
+```
+
+**Mobile App Implementation:**
+```javascript
+// FreeStyle Libre NFC Integration
+import NfcManager, { NfcTech, Ndef } from 'react-native-nfc-manager';
+
+async function readLibreSensor() {
+    try {
+        await NfcManager.requestTechnology(NfcTech.Ndef);
+        const tag = await NfcManager.getTag();
+        
+        if (tag.ndefMessage) {
+            // Parse Libre data
+            const libreData = parseLibreData(tag.ndefMessage);
+            
+            // Send each reading to Health Tracker
+            for (const reading of libreData.readings) {
+                await fetch('https://your-app.railway.app/api/cgm/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        device_id: 'libre_2_xyz789',
+                        device_type: 'freestyle_libre_2',
+                        connection_type: 'nfc',
+                        data: {
+                            glucose_value: reading.value,
+                            timestamp: reading.timestamp,
+                            trend: reading.trend
+                        }
+                    })
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Libre read error:', error);
+    } finally {
+        NfcManager.cancelTechnologyRequest();
+    }
+}
+```
+
+#### 3. **Eversense CGM**
+**Price:** $1,000+ (implantable sensor) + $300/month  
+**Integration Method:** BLE, Eversense App API  
+**Data Captured:**
+- Continuous glucose readings
+- Trend information
+- Calibration data
+
+### CGM Data Structure
+
+```json
+{
+    "device_id": "dexcom_g6_abc123",
+    "device_type": "dexcom_g6",
+    "connection_type": "ble",
+    "data": {
+        "glucose_value": 120,
+        "trend": "stable",
+        "timestamp": "2025-01-15T10:30:00Z",
+        "meal_context": "before_meal",
+        "insulin_on_board": 2.5,
+        "alerts": [
+            {
+                "type": "high",
+                "severity": "warning",
+                "threshold": 180
+            }
+        ]
+    }
+}
+```
+
+### CGM-Specific Features
+
+1. **Real-Time Alerts**
+   - Low glucose alerts (< 70 mg/dL)
+   - High glucose alerts (> 180 mg/dL)
+   - Rapid rise/fall alerts
+
+2. **Time in Range (TIR)**
+   - Percentage of time glucose is in target range (70-180 mg/dL)
+   - Calculated daily, weekly, monthly
+
+3. **Trend Analysis**
+   - Rising (↗)
+   - Falling (↘)
+   - Stable (→)
+   - Rapid changes
+
+4. **Meal Context**
+   - Before meal
+   - After meal
+   - Fasting
+   - Exercise
+
+### API Endpoints for CGM
+
+**POST** `/api/cgm/stream` - Stream CGM data  
+**GET** `/api/cgm/data` - Get historical CGM data  
+**GET** `/api/cgm/alerts` - Get CGM alerts  
+**GET** `/api/cgm/stats` - Get CGM statistics (TIR, averages)
+
+### Integration Budget
+
+| Device | Device Cost | Monthly | Integration Cost |
+|--------|-------------|---------|------------------|
+| Dexcom G6/G7 | $300-$500 | $300 | $600-$1,200 |
+| FreeStyle Libre 2/3 | $70-$140 | $70 | $400-$800 |
+| Eversense | $1,000+ | $300 | $800-$1,500 |
+
+### Implementation Steps
+
+1. **Choose CGM Device**
+   - Dexcom: Best for real-time monitoring
+   - Libre: Cost-effective, NFC tap
+   - Eversense: Long-term implantable
+
+2. **Mobile App Development**
+   - Implement BLE/NFC connection
+   - Parse device-specific data format
+   - Handle alerts and notifications
+
+3. **API Integration**
+   - Set up streaming endpoint
+   - Store CGM data in database
+   - Calculate statistics
+
+4. **Testing**
+   - Test with real device
+   - Verify data accuracy
+   - Test alert system
+
+---
+
 *Last Updated: January 2025*
 

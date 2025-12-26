@@ -189,6 +189,20 @@
                 </div>
             </div>
 
+            <!-- CGM Data -->
+            <div class="section">
+                <h2 class="section-title">🩸 Continuous Glucose Monitoring (CGM)</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <p style="margin-bottom: 15px;">Real-time glucose monitoring from CGM devices (Dexcom, FreeStyle Libre, etc.)</p>
+                    <button class="btn btn-primary" onclick="loadCGMData()" style="margin-right: 10px;">Refresh CGM Data</button>
+                    <button class="btn btn-success" onclick="loadCGMStats()">View Statistics</button>
+                </div>
+                <div id="cgm-table-container">
+                    <div class="loading">Loading CGM data...</div>
+                </div>
+                <div id="cgm-stats-container" style="margin-top: 20px;"></div>
+            </div>
+
             <!-- Diet Plan -->
             <div class="section">
                 <h2 class="section-title">🍽️ Diet Plan</h2>

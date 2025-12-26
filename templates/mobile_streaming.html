@@ -876,6 +876,198 @@ Authorization: Bearer {token}
                 </table>
             </div>
 
+            <!-- CGM Integration -->
+            <div class="section">
+                <h2>🩸 Continuous Glucose Monitoring (CGM) Integration</h2>
+                
+                <div class="tech-card">
+                    <h4>📡 CGM Overview</h4>
+                    <p>CGM devices provide continuous, real-time glucose readings throughout the day. They use sensors 
+                    inserted under the skin that measure glucose levels in interstitial fluid every few minutes.</p>
+                    
+                    <h4 style="margin-top: 25px;">🔄 CGM Data Flow</h4>
+                    <div class="diagram">
+┌─────────────────────────────────────────────────────────────┐
+│              CGM Streaming Architecture                     │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────┐                    ┌─────────────┐
+│  CGM        │                    │  Mobile App │
+│  Sensor     │                    │  (Gateway)  │
+│  (BLE/NFC)  │                    │             │
+└──────┬──────┘                    └──────┬──────┘
+       │                                   │
+       │ 1. Connect (BLE) or Tap (NFC)     │
+       │──────────────────────────────────▶│
+       │                                   │
+       │ 2. Glucose Reading                │
+       │──────────────────────────────────▶│
+       │    Value: 120 mg/dL               │
+       │    Trend: → (stable)              │
+       │    Timestamp: 10:30:00            │
+       │                                   │
+       │ 3. Process & Validate             │
+       │    - Check alerts (high/low)      │
+       │    - Calculate trend              │
+       │                                   │
+       │ 4. Upload to Health Tracker       │
+       │──────────────────────────────────▶│
+       │    POST /api/cgm/stream           │
+       │                                   │
+       │ 5. Store in Database              │
+       │    - CGM data table               │
+       │    - Health tracker table         │
+       │                                   │
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">📱 Supported CGM Devices</h4>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Device</th>
+                            <th>Connection</th>
+                            <th>Update Frequency</th>
+                            <th>Cost</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Dexcom G6/G7</strong></td>
+                            <td>BLE</td>
+                            <td>Every 5 minutes</td>
+                            <td>$300-$500 + $300/mo</td>
+                        </tr>
+                        <tr>
+                            <td><strong>FreeStyle Libre 2/3</strong></td>
+                            <td>NFC Tap</td>
+                            <td>Every minute (Libre 3)</td>
+                            <td>$70-$140 + $70/mo</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Eversense</strong></td>
+                            <td>BLE</td>
+                            <td>Every 5 minutes</td>
+                            <td>$1,000+ + $300/mo</td>
+                        </tr>
+                    </table>
+                    
+                    <h4 style="margin-top: 25px;">💻 Mobile App Implementation (Dexcom)</h4>
+                    <div class="code-block">
+<span class="comment">// Dexcom G6/G7 BLE Integration</span>
+<span class="keyword">import</span> { BleManager } <span class="keyword">from</span> <span class="string">'react-native-ble-plx'</span>;
+
+<span class="keyword">const</span> DEXCOM_SERVICE = <span class="string">'0000febc-0000-1000-8000-00805f9b34fb'</span>;
+<span class="keyword">const</span> GLUCOSE_CHAR = <span class="string">'0000febd-0000-1000-8000-00805f9b34fb'</span>;
+
+<span class="keyword">async function</span> connectDexcom() {
+    <span class="keyword">const</span> device = <span class="keyword">await</span> manager.connectToDevice(deviceId);
+    <span class="keyword">await</span> device.discoverAllServicesAndCharacteristics();
+    
+    <span class="comment">// Subscribe to glucose readings</span>
+    device.monitorCharacteristicForService(
+        DEXCOM_SERVICE,
+        GLUCOSE_CHAR,
+        <span class="keyword">async</span> (error, characteristic) => {
+            <span class="keyword">if</span> (characteristic?.value) {
+                <span class="keyword">const</span> glucoseData = parseDexcomData(characteristic.value);
+                
+                <span class="comment">// Send to Health Tracker</span>
+                <span class="keyword">await</span> fetch(<span class="string">'/api/cgm/stream'</span>, {
+                    method: <span class="string">'POST'</span>,
+                    body: JSON.stringify({
+                        device_id: <span class="string">'dexcom_g6_abc123'</span>,
+                        device_type: <span class="string">'dexcom_g6'</span>,
+                        connection_type: <span class="string">'ble'</span>,
+                        data: {
+                            glucose_value: glucoseData.value,
+                            trend: glucoseData.trend,
+                            timestamp: <span class="keyword">new</span> Date().toISOString()
+                        }
+                    })
+                });
+            }
+        }
+    );
+}
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">📊 CGM Data Visualization Flow</h4>
+                    <div class="diagram">
+Real-Time CGM Streaming:
+
+Time: 10:00:00  →  Glucose: 110 mg/dL  →  Trend: →  →  Upload ✅
+Time: 10:05:00  →  Glucose: 115 mg/dL  →  Trend: ↗  →  Upload ✅
+Time: 10:10:00  →  Glucose: 120 mg/dL  →  Trend: ↗  →  Upload ✅
+Time: 10:15:00  →  Glucose: 125 mg/dL  →  Alert: ⚠️  →  Upload ✅
+Time: 10:20:00  →  Glucose: 130 mg/dL  →  Trend: ↗  →  Upload ✅
+
+... Continuous every 5 minutes ...
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">🔌 CGM API Endpoints</h4>
+                    <div class="code-block">
+<span class="comment">// Stream CGM Data</span>
+POST /api/cgm/stream
+{
+    <span class="string">"device_id"</span>: <span class="string">"dexcom_g6_abc123"</span>,
+    <span class="string">"device_type"</span>: <span class="string">"dexcom_g6"</span>,
+    <span class="string">"connection_type"</span>: <span class="string">"ble"</span>,
+    <span class="string">"data"</span>: {
+        <span class="string">"glucose_value"</span>: 120,
+        <span class="string">"trend"</span>: <span class="string">"stable"</span>,
+        <span class="string">"timestamp"</span>: <span class="string">"2025-01-15T10:30:00Z"</span>,
+        <span class="string">"alerts"</span>: []
+    }
+}
+
+<span class="comment">// Get CGM Statistics</span>
+GET /api/cgm/stats?device_id=dexcom_g6_abc123&days=7
+
+Response:
+{
+    <span class="string">"average_glucose"</span>: 125.5,
+    <span class="string">"time_in_range_percentage"</span>: 78.5,
+    <span class="string">"min_glucose"</span>: 85,
+    <span class="string">"max_glucose"</span>: 180
+}
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">⚠️ CGM Alerts System</h4>
+                    <div class="diagram">
+Alert Thresholds:
+├── Low Glucose Alert: &lt; 70 mg/dL (Critical)
+├── High Glucose Alert: &gt; 180 mg/dL (Warning)
+├── Very High Alert: &gt; 250 mg/dL (Critical)
+└── Rapid Change Alert: ±30 mg/dL in 15 min
+
+Alert Flow:
+Device detects alert → Mobile app receives → 
+Immediate notification → Upload to Health Tracker → 
+Database stores → Dashboard displays alert
+                    </div>
+                    
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <strong>✅ CGM Benefits</strong>
+                            <ul>
+                                <li>Real-time glucose monitoring</li>
+                                <li>Trend analysis</li>
+                                <li>Alert system for highs/lows</li>
+                                <li>Time in range tracking</li>
+                                <li>Better diabetes management</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <strong>⚠️ Considerations</strong>
+                            <ul>
+                                <li>Requires sensor replacement</li>
+                                <li>Monthly subscription costs</li>
+                                <li>Calibration needed</li>
+                                <li>Sensor insertion required</li>
+                                <li>Data accuracy depends on sensor</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Implementation Guide -->
             <div class="section">
                 <h2>🚀 Implementation Guide</h2>

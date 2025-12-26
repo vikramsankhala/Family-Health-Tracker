@@ -82,6 +82,22 @@ def init_database():
         )
     ''')
     
+    # CGM (Continuous Glucose Monitoring) Data table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cgm_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT NOT NULL,
+            device_type TEXT,
+            glucose_value REAL NOT NULL,
+            trend TEXT,
+            timestamp TIMESTAMP NOT NULL,
+            meal_context TEXT,
+            insulin_on_board REAL,
+            alerts TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     # Comments table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS comments (

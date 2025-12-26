@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request, send_file, send_from
 from flask_cors import CORS
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from openai import OpenAI
 from werkzeug.utils import secure_filename
 import uuid
@@ -709,6 +709,196 @@ def get_connected_devices():
             'success': True,
             'devices': []
         })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Continuous Glucose Monitoring (CGM) Endpoints
+@app.route('/api/cgm/data', methods=['GET'])
+def get_cgm_data():
+    """Get CGM data (read-only)"""
+    try:
+        device_id = request.args.get('device_id')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            
+            query = 'SELECT * FROM cgm_data WHERE 1=1'
+            params = []
+            
+            if device_id:
+                query += ' AND device_id = ?'
+                params.append(device_id)
+            if start_date:
+                query += ' AND timestamp >= ?'
+                params.append(start_date)
+            if end_date:
+                query += ' AND timestamp <= ?'
+                params.append(end_date)
+            
+            query += ' ORDER BY timestamp DESC LIMIT 1000'
+            
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            
+            data = []
+            for row in rows:
+                data.append({
+                    'id': row['id'],
+                    'device_id': row['device_id'],
+                    'glucose_value': row['glucose_value'],
+                    'trend': row['trend'],
+                    'timestamp': row['timestamp'],
+                    'meal_context': row['meal_context'],
+                    'insulin_on_board': row['insulin_on_board'],
+                    'alerts': row['alerts']
+                })
+            
+            return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/cgm/stream', methods=['POST'])
+def stream_cgm_data():
+    """Receive streaming CGM data from mobile app"""
+    try:
+        data = request.json
+        device_id = data.get('device_id')
+        device_type = data.get('device_type')  # dexcom, freestyle_libre, etc.
+        connection_type = data.get('connection_type', 'ble')
+        cgm_data = data.get('data')
+        
+        if not device_id or not cgm_data:
+            return jsonify({'success': False, 'error': 'device_id and data are required'}), 400
+        
+        # Ensure CGM table exists
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Create CGM table if not exists
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS cgm_data (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    device_id TEXT NOT NULL,
+                    device_type TEXT,
+                    glucose_value REAL NOT NULL,
+                    trend TEXT,
+                    timestamp TIMESTAMP NOT NULL,
+                    meal_context TEXT,
+                    insulin_on_board REAL,
+                    alerts TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            ''')
+            
+            # Insert CGM reading
+            cursor.execute('''
+                INSERT INTO cgm_data 
+                (device_id, device_type, glucose_value, trend, timestamp, meal_context, insulin_on_board, alerts)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                device_id,
+                device_type,
+                cgm_data.get('glucose_value'),
+                cgm_data.get('trend'),  # rising, falling, stable, etc.
+                cgm_data.get('timestamp', datetime.now().isoformat()),
+                cgm_data.get('meal_context'),  # before_meal, after_meal, fasting
+                cgm_data.get('insulin_on_board'),
+                json.dumps(cgm_data.get('alerts', [])) if cgm_data.get('alerts') else None
+            ))
+            
+            # Also update health_tracker_data if needed
+            if cgm_data.get('glucose_value'):
+                cursor.execute('''
+                    INSERT OR REPLACE INTO health_tracker_data 
+                    (date, blood_sugar, created_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (
+                    cgm_data.get('timestamp', datetime.now().isoformat()).split('T')[0],
+                    str(cgm_data.get('glucose_value'))
+                ))
+        
+        return jsonify({
+            'success': True,
+            'message': 'CGM data received',
+            'device_id': device_id,
+            'glucose_value': cgm_data.get('glucose_value'),
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/cgm/alerts', methods=['GET'])
+def get_cgm_alerts():
+    """Get CGM alerts (high/low glucose)"""
+    try:
+        device_id = request.args.get('device_id')
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM cgm_data
+                WHERE alerts IS NOT NULL
+                AND (device_id = ? OR ? IS NULL)
+                ORDER BY timestamp DESC
+                LIMIT 50
+            ''', (device_id, device_id))
+            
+            rows = cursor.fetchall()
+            alerts = []
+            for row in rows:
+                if row['alerts']:
+                    alert_data = json.loads(row['alerts']) if isinstance(row['alerts'], str) else row['alerts']
+                    alerts.append({
+                        'device_id': row['device_id'],
+                        'glucose_value': row['glucose_value'],
+                        'alerts': alert_data,
+                        'timestamp': row['timestamp']
+                    })
+            
+            return jsonify({'success': True, 'alerts': alerts})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/cgm/stats', methods=['GET'])
+def get_cgm_stats():
+    """Get CGM statistics (time in range, average, etc.)"""
+    try:
+        device_id = request.args.get('device_id')
+        days = int(request.args.get('days', 7))
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            
+            start_date = (datetime.now() - timedelta(days=days)).isoformat()
+            
+            cursor.execute('''
+                SELECT 
+                    AVG(glucose_value) as avg_glucose,
+                    MIN(glucose_value) as min_glucose,
+                    MAX(glucose_value) as max_glucose,
+                    COUNT(*) as total_readings,
+                    SUM(CASE WHEN glucose_value >= 70 AND glucose_value <= 180 THEN 1 ELSE 0 END) as in_range_count
+                FROM cgm_data
+                WHERE timestamp >= ? AND (device_id = ? OR ? IS NULL)
+            ''', (start_date, device_id, device_id))
+            
+            row = cursor.fetchone()
+            
+            total_readings = row['total_readings'] or 0
+            in_range_count = row['in_range_count'] or 0
+            
+            stats = {
+                'average_glucose': round(row['avg_glucose'] or 0, 1),
+                'min_glucose': row['min_glucose'] or 0,
+                'max_glucose': row['max_glucose'] or 0,
+                'total_readings': total_readings,
+                'time_in_range_percentage': round((in_range_count / total_readings * 100) if total_readings > 0 else 0, 1),
+                'days': days
+            }
+            
+            return jsonify({'success': True, 'stats': stats})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
