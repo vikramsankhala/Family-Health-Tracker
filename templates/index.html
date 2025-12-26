@@ -415,11 +415,20 @@
         async function loadHealthData() {
             try {
                 const response = await fetch('/api/health-data');
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('API Error:', response.status, text);
+                    document.getElementById('health-table-container').innerHTML = `<div class="error">Error loading data: HTTP ${response.status}</div>`;
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     displayHealthTable(data.data);
+                } else {
+                    document.getElementById('health-table-container').innerHTML = `<div class="error">Error loading data: ${data.error || 'Unknown error'}</div>`;
                 }
             } catch (error) {
+                console.error('Error loading health data:', error);
                 document.getElementById('health-table-container').innerHTML = `<div class="error">Error loading data: ${error.message}</div>`;
             }
         }
@@ -457,11 +466,20 @@
         async function loadDietPlan() {
             try {
                 const response = await fetch('/api/diet-plan');
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('API Error:', response.status, text);
+                    document.getElementById('diet-table-container').innerHTML = `<div class="error">Error loading data: HTTP ${response.status}</div>`;
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     displayDietTable(data.data);
+                } else {
+                    document.getElementById('diet-table-container').innerHTML = `<div class="error">Error loading data: ${data.error || 'Unknown error'}</div>`;
                 }
             } catch (error) {
+                console.error('Error loading diet plan:', error);
                 document.getElementById('diet-table-container').innerHTML = `<div class="error">Error loading data: ${error.message}</div>`;
             }
         }
@@ -493,11 +511,20 @@
         async function loadExercisePlan() {
             try {
                 const response = await fetch('/api/exercise-plan');
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('API Error:', response.status, text);
+                    document.getElementById('exercise-table-container').innerHTML = `<div class="error">Error loading data: HTTP ${response.status}</div>`;
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     displayExerciseTable(data.data);
+                } else {
+                    document.getElementById('exercise-table-container').innerHTML = `<div class="error">Error loading data: ${data.error || 'Unknown error'}</div>`;
                 }
             } catch (error) {
+                console.error('Error loading exercise plan:', error);
                 document.getElementById('exercise-table-container').innerHTML = `<div class="error">Error loading data: ${error.message}</div>`;
             }
         }
