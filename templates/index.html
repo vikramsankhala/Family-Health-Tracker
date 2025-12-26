@@ -257,6 +257,30 @@
                 </div>
             </div>
 
+            <!-- Device API Integration -->
+            <div class="section">
+                <h2 class="section-title">🔌 Device API Integration - Apple Watch & Garmin</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <p style="margin-bottom: 15px;">Connect your Apple Watch or Garmin device for automatic health data synchronization.</p>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #667eea;">
+                            <h3 style="color: #667eea; margin-bottom: 10px;">🍎 Apple Watch</h3>
+                            <p style="margin-bottom: 15px;">Sync steps, heart rate, sleep, and workouts automatically.</p>
+                            <button class="btn btn-primary" onclick="connectDevice('apple')" id="btn-connect-apple">Connect Apple Watch</button>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 8px; border: 2px solid #28a745;">
+                            <h3 style="color: #28a745; margin-bottom: 10px;">🏃 Garmin</h3>
+                            <p style="margin-bottom: 15px;">Sync activities, steps, heart rate, and sleep data.</p>
+                            <button class="btn btn-success" onclick="connectDevice('garmin')" id="btn-connect-garmin">Connect Garmin</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="devices-container">
+                    <div class="loading">Loading connected devices...</div>
+                </div>
+            </div>
+
             <!-- Wearables & Sensors Integration -->
             <div class="section">
                 <h2 class="section-title">⌚ Wearables & Sensor Integration</h2>
