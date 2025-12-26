@@ -753,6 +753,99 @@
             }
         }
 
+        async function loadCGMData() {
+            try {
+                const response = await fetch('/api/cgm/data?limit=50');
+                const data = await response.json();
+                if (data.success) {
+                    displayCGMTable(data.data);
+                }
+            } catch (error) {
+                document.getElementById('cgm-table-container').innerHTML = `<div class="error">Error loading CGM data: ${error.message}</div>`;
+            }
+        }
+
+        function displayCGMTable(data) {
+            const container = document.getElementById('cgm-table-container');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<p>No CGM data available. Connect a CGM device via mobile app to start streaming.</p>';
+                return;
+            }
+
+            let html = '<table><thead><tr><th>Timestamp</th><th>Glucose (mg/dL)</th><th>Trend</th><th>Meal Context</th><th>Alerts</th></tr></thead><tbody>';
+
+            data.forEach(row => {
+                const trendIcon = {
+                    'rising': '↗',
+                    'rising_fast': '↗↗',
+                    'falling': '↘',
+                    'falling_fast': '↘↘',
+                    'stable': '→'
+                }[row.trend] || '→';
+                
+                const glucoseValue = row.glucose_value;
+                let glucoseClass = '';
+                if (glucoseValue < 70) glucoseClass = 'style="color: #dc3545; font-weight: bold;"';
+                else if (glucoseValue > 180) glucoseClass = 'style="color: #ffc107; font-weight: bold;"';
+                else if (glucoseValue > 250) glucoseClass = 'style="color: #dc3545; font-weight: bold;"';
+                
+                const alerts = row.alerts ? (typeof row.alerts === 'string' ? JSON.parse(row.alerts) : row.alerts) : [];
+                const alertText = alerts.length > 0 ? alerts.map(a => a.type).join(', ') : '-';
+
+                html += `<tr>
+                    <td>${row.timestamp ? new Date(row.timestamp).toLocaleString() : ''}</td>
+                    <td ${glucoseClass}>${glucoseValue}</td>
+                    <td>${trendIcon}</td>
+                    <td>${row.meal_context || '-'}</td>
+                    <td>${alertText}</td>
+                </tr>`;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        async function loadCGMStats() {
+            const statsDiv = document.getElementById('cgm-stats-container');
+            statsDiv.innerHTML = '<div class="loading">Loading statistics...</div>';
+
+            try {
+                const response = await fetch('/api/cgm/stats?days=7');
+                const data = await response.json();
+                if (data.success) {
+                    const stats = data.stats;
+                    statsDiv.innerHTML = `
+                        <div style="background: white; padding: 20px; border-radius: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div style="text-align: center; padding: 15px; background: #e7f3ff; border-radius: 5px;">
+                                <div style="font-size: 0.9em; color: #666;">Average Glucose</div>
+                                <div style="font-size: 2em; font-weight: bold; color: #667eea;">${stats.average_glucose}</div>
+                                <div style="font-size: 0.8em; color: #999;">mg/dL</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: #d4edda; border-radius: 5px;">
+                                <div style="font-size: 0.9em; color: #666;">Time in Range</div>
+                                <div style="font-size: 2em; font-weight: bold; color: #28a745;">${stats.time_in_range_percentage}%</div>
+                                <div style="font-size: 0.8em; color: #999;">Last ${stats.days} days</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                                <div style="font-size: 0.9em; color: #666;">Min Glucose</div>
+                                <div style="font-size: 2em; font-weight: bold; color: #ffc107;">${stats.min_glucose}</div>
+                                <div style="font-size: 0.8em; color: #999;">mg/dL</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: #f8d7da; border-radius: 5px;">
+                                <div style="font-size: 0.9em; color: #666;">Max Glucose</div>
+                                <div style="font-size: 2em; font-weight: bold; color: #dc3545;">${stats.max_glucose}</div>
+                                <div style="font-size: 0.8em; color: #999;">mg/dL</div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    statsDiv.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                }
+            } catch (error) {
+                statsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            }
+        }
+
         window.onclick = function(event) {
             const modal = document.getElementById('loginModal');
             if (event.target === modal) closeLoginModal();
