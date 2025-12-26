@@ -1069,6 +1069,190 @@
             .catch(error => alert('Error: ' + error.message));
         }
 
+        async function loadDevices() {
+            try {
+                const response = await fetch('/api/devices');
+                if (!response.ok) {
+                    console.error('Error loading devices:', response.status);
+                    return;
+                }
+                const data = await response.json();
+                if (data.success) {
+                    displayDevices(data.devices);
+                }
+            } catch (error) {
+                console.error('Error loading devices:', error);
+            }
+        }
+
+        function displayDevices(devices) {
+            const container = document.getElementById('devices-container');
+            if (!devices || devices.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">No devices connected. Connect a device above to get started.</p>';
+                return;
+            }
+
+            let html = '<div style="display: grid; gap: 15px;">';
+            devices.forEach(device => {
+                const statusColor = {
+                    'completed': '#28a745',
+                    'syncing': '#17a2b8',
+                    'error': '#dc3545',
+                    'pending': '#ffc107'
+                }[device.sync_status] || '#6c757d';
+                
+                html += `
+                    <div style="background: white; border: 2px solid ${statusColor}; border-radius: 10px; padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                            <div>
+                                <h3 style="margin: 0; color: #333;">${device.device_name}</h3>
+                                <p style="margin: 5px 0; color: #666; font-size: 0.9em;">${device.device_type}</p>
+                            </div>
+                            <span style="background: ${statusColor}; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9em;">
+                                ${device.sync_status}
+                            </span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                            <div>
+                                <strong>Sync:</strong> ${device.sync_enabled ? '✅ Enabled' : '❌ Disabled'}
+                            </div>
+                            <div>
+                                <strong>Last Sync:</strong> ${device.last_sync_at ? new Date(device.last_sync_at).toLocaleString() : 'Never'}
+                            </div>
+                        </div>
+                        ${device.sync_error ? `<div style="background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 10px;">Error: ${device.sync_error}</div>` : ''}
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${isAuthenticated ? `
+                                <button class="btn btn-primary" onclick="syncDevice(${device.id})">Sync Now</button>
+                                <button class="btn btn-secondary" onclick="toggleDeviceSync(${device.id}, ${!device.sync_enabled})">
+                                    ${device.sync_enabled ? 'Disable Sync' : 'Enable Sync'}
+                                </button>
+                                <button class="btn btn-danger" onclick="disconnectDevice(${device.id})">Disconnect</button>
+                            ` : '<p style="color: #666;">Login to manage device</p>'}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function connectDevice(deviceType) {
+            if (!isAuthenticated) {
+                showLoginModal();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/devices/${deviceType}/connect`, {
+                    headers: {
+                        'X-Session-ID': sessionId
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success && data.auth_url) {
+                    // Open OAuth flow in new window
+                    window.open(data.auth_url, 'DeviceAuth', 'width=600,height=700');
+                    alert('Please complete the authorization in the popup window. You will be redirected back when done.');
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to initiate connection'));
+                }
+            } catch (error) {
+                alert('Error connecting device: ' + error.message);
+            }
+        }
+
+        async function syncDevice(deviceId) {
+            if (!isAuthenticated) {
+                showLoginModal();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/sync`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-ID': sessionId
+                    },
+                    body: JSON.stringify({ days: 7 })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Sync completed! ${data.records_synced || 0} records synced.`);
+                    loadDevices();
+                    loadHealthData(); // Refresh health data
+                } else {
+                    alert('Sync failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error syncing device: ' + error.message);
+            }
+        }
+
+        async function toggleDeviceSync(deviceId, enable) {
+            if (!isAuthenticated) {
+                showLoginModal();
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/devices/${deviceId}/toggle`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Session-ID': sessionId
+                    },
+                    body: JSON.stringify({ sync_enabled: enable })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    loadDevices();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to toggle sync'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function disconnectDevice(deviceId) {
+            if (!isAuthenticated) {
+                showLoginModal();
+                return;
+            }
+
+            if (!confirm('Are you sure you want to disconnect this device?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/devices/${deviceId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-Session-ID': sessionId
+                    }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    loadDevices();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to disconnect'));
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Load devices on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            loadDevices();
+        });
+
         window.onclick = function(event) {
             const modal = document.getElementById('loginModal');
             if (event.target === modal) closeLoginModal();

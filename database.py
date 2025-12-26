@@ -119,6 +119,42 @@ def init_database():
         )
     ''')
     
+    # Device Connections table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS device_connections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_type TEXT NOT NULL,
+            device_name TEXT NOT NULL,
+            account_id TEXT,
+            access_token TEXT,
+            refresh_token TEXT,
+            token_expires_at TIMESTAMP,
+            sync_enabled INTEGER DEFAULT 1,
+            last_sync_at TIMESTAMP,
+            sync_status TEXT DEFAULT 'pending',
+            sync_error TEXT,
+            metadata TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT
+        )
+    ''')
+    
+    # Device Sync Log table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS device_sync_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_connection_id INTEGER NOT NULL,
+            sync_type TEXT NOT NULL,
+            records_synced INTEGER DEFAULT 0,
+            sync_started_at TIMESTAMP,
+            sync_completed_at TIMESTAMP,
+            status TEXT DEFAULT 'pending',
+            error_message TEXT,
+            FOREIGN KEY (device_connection_id) REFERENCES device_connections(id)
+        )
+    ''')
+    
     # Comments table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS comments (
@@ -371,6 +407,44 @@ else:
                 status TEXT DEFAULT 'pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='device_connections'")
+    if not cursor.fetchone():
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS device_connections (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_type TEXT NOT NULL,
+                device_name TEXT NOT NULL,
+                account_id TEXT,
+                access_token TEXT,
+                refresh_token TEXT,
+                token_expires_at TIMESTAMP,
+                sync_enabled INTEGER DEFAULT 1,
+                last_sync_at TIMESTAMP,
+                sync_status TEXT DEFAULT 'pending',
+                sync_error TEXT,
+                metadata TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_by TEXT
+            )
+        ''')
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='device_sync_log'")
+    if not cursor.fetchone():
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS device_sync_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_connection_id INTEGER NOT NULL,
+                sync_type TEXT NOT NULL,
+                records_synced INTEGER DEFAULT 0,
+                sync_started_at TIMESTAMP,
+                sync_completed_at TIMESTAMP,
+                status TEXT DEFAULT 'pending',
+                error_message TEXT,
+                FOREIGN KEY (device_connection_id) REFERENCES device_connections(id)
             )
         ''')
     

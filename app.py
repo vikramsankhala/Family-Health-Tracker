@@ -10,6 +10,7 @@ from functools import wraps
 import database
 import file_parser
 import health_plan_creator
+import device_integrations
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
@@ -1127,6 +1128,252 @@ def get_current_week():
                     })
                 else:
                     return jsonify({'success': False, 'error': 'No health plan found'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Device Integration Endpoints
+@app.route('/api/devices', methods=['GET'])
+def get_devices():
+    """Get all connected devices"""
+    try:
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, device_type, device_name, sync_enabled, last_sync_at, sync_status, sync_error, created_at
+                FROM device_connections
+                ORDER BY created_at DESC
+            ''')
+            rows = cursor.fetchall()
+            devices = []
+            for row in rows:
+                devices.append({
+                    'id': row['id'],
+                    'device_type': row['device_type'],
+                    'device_name': row['device_name'],
+                    'sync_enabled': bool(row['sync_enabled']),
+                    'last_sync_at': row['last_sync_at'],
+                    'sync_status': row['sync_status'],
+                    'sync_error': row['sync_error'],
+                    'created_at': row['created_at']
+                })
+            return jsonify({'success': True, 'devices': devices})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/<device_type>/connect', methods=['GET'])
+@require_auth
+def connect_device(device_type):
+    """Initiate OAuth flow for device connection"""
+    try:
+        if device_type.lower() not in ['apple', 'apple_watch', 'garmin']:
+            return jsonify({'success': False, 'error': 'Unsupported device type'}), 400
+        
+        integration = device_integrations.get_device_integration(device_type)
+        state = str(uuid.uuid4())
+        
+        # Store state in session for verification
+        session[f'device_oauth_state_{device_type}'] = state
+        
+        auth_url = integration.get_authorization_url(state)
+        
+        if auth_url:
+            return jsonify({
+                'success': True,
+                'auth_url': auth_url,
+                'state': state
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to generate authorization URL'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/apple/callback', methods=['GET'])
+def apple_callback():
+    """Handle Apple OAuth callback"""
+    try:
+        code = request.args.get('code')
+        state = request.args.get('state')
+        
+        if not code or not state:
+            return jsonify({'success': False, 'error': 'Missing code or state'}), 400
+        
+        integration = device_integrations.AppleHealthKitIntegration()
+        token_data = integration.exchange_code_for_token(code)
+        
+        if 'error' in token_data:
+            return jsonify({'success': False, 'error': token_data['error']}), 500
+        
+        # Store device connection
+        username = 'vikramsankhala'  # Default user
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO device_connections 
+                (device_type, device_name, account_id, access_token, refresh_token, token_expires_at, sync_enabled, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                'apple_watch',
+                'Apple Watch',
+                token_data.get('user_id'),
+                token_data.get('access_token'),
+                token_data.get('refresh_token'),
+                datetime.now() + timedelta(seconds=token_data.get('expires_in', 3600)),
+                1,
+                username
+            ))
+            device_id = cursor.lastrowid
+        
+        return jsonify({
+            'success': True,
+            'message': 'Apple Watch connected successfully',
+            'device_id': device_id
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/garmin/callback', methods=['GET'])
+def garmin_callback():
+    """Handle Garmin OAuth callback"""
+    try:
+        oauth_token = request.args.get('oauth_token')
+        oauth_verifier = request.args.get('oauth_verifier')
+        
+        if not oauth_token or not oauth_verifier:
+            return jsonify({'success': False, 'error': 'Missing OAuth parameters'}), 400
+        
+        integration = device_integrations.GarminConnectIntegration()
+        token_data = integration.exchange_token(oauth_token, oauth_verifier)
+        
+        if 'error' in token_data:
+            return jsonify({'success': False, 'error': token_data['error']}), 500
+        
+        # Store device connection
+        username = 'vikramsankhala'  # Default user
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO device_connections 
+                (device_type, device_name, access_token, refresh_token, sync_enabled, metadata, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                'garmin',
+                'Garmin Device',
+                token_data.get('access_token'),
+                token_data.get('access_token_secret'),
+                1,
+                json.dumps({'oauth_token': oauth_token}),
+                username
+            ))
+            device_id = cursor.lastrowid
+        
+        return jsonify({
+            'success': True,
+            'message': 'Garmin device connected successfully',
+            'device_id': device_id
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/<int:device_id>/sync', methods=['POST'])
+@require_auth
+def sync_device(device_id):
+    """Manually trigger device sync"""
+    try:
+        days = request.json.get('days', 7) if request.json else 7
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM device_connections WHERE id = ?', (device_id,))
+            device = cursor.fetchone()
+            
+            if not device:
+                return jsonify({'success': False, 'error': 'Device not found'}), 404
+            
+            if not device['sync_enabled']:
+                return jsonify({'success': False, 'error': 'Sync is disabled for this device'}), 400
+            
+            # Update sync status
+            cursor.execute('''
+                UPDATE device_connections 
+                SET sync_status = 'syncing', sync_error = NULL
+                WHERE id = ?
+            ''', (device_id,))
+        
+        # Perform sync based on device type
+        if device['device_type'] == 'apple_watch':
+            integration = device_integrations.AppleHealthKitIntegration()
+            result = integration.sync_to_database(device_id, device['access_token'], days)
+        elif device['device_type'] == 'garmin':
+            metadata = json.loads(device['metadata']) if device['metadata'] else {}
+            integration = device_integrations.GarminConnectIntegration()
+            result = integration.sync_to_database(
+                device_id, 
+                device['access_token'], 
+                device['refresh_token'],
+                days
+            )
+        else:
+            return jsonify({'success': False, 'error': 'Unsupported device type'}), 400
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'message': 'Sync completed successfully',
+                'records_synced': result.get('records_synced', 0)
+            })
+        else:
+            # Update error status
+            with database.get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    UPDATE device_connections 
+                    SET sync_status = 'error', sync_error = ?
+                    WHERE id = ?
+                ''', (result.get('error', 'Unknown error'), device_id))
+            
+            return jsonify({'success': False, 'error': result.get('error', 'Sync failed')}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/<int:device_id>', methods=['DELETE'])
+@require_auth
+def disconnect_device(device_id):
+    """Disconnect a device"""
+    try:
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM device_connections WHERE id = ?', (device_id,))
+            
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Device not found'}), 404
+        
+        return jsonify({'success': True, 'message': 'Device disconnected successfully'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/<int:device_id>/toggle', methods=['PUT'])
+@require_auth
+def toggle_device_sync(device_id):
+    """Enable/disable sync for a device"""
+    try:
+        data = request.json
+        sync_enabled = data.get('sync_enabled', True)
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE device_connections 
+                SET sync_enabled = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+            ''', (1 if sync_enabled else 0, device_id))
+            
+            if cursor.rowcount == 0:
+                return jsonify({'success': False, 'error': 'Device not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'message': f'Sync {"enabled" if sync_enabled else "disabled"} successfully'
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
