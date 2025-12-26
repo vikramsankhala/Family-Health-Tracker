@@ -59,27 +59,28 @@ def parse_diet_plan(filepath):
             if 'Weekly Meal Plan' in xls.sheet_names:
                 df = pd.read_excel(filepath, sheet_name='Weekly Meal Plan', header=2)
                 
-                # Get column names (meal types)
+                # Get meal types from first row (row 0)
                 meal_types = []
-                if len(df.columns) > 0:
-                    # First column is DAY, rest are meal types
-                    for col_idx in range(1, len(df.columns)):
-                        col_name = str(df.columns[col_idx])
-                        if 'BREAKFAST' in col_name.upper():
+                if len(df) > 0:
+                    first_row = df.iloc[0]
+                    for col_idx in range(1, len(first_row)):
+                        header_val = str(first_row.iloc[col_idx]).strip() if pd.notna(first_row.iloc[col_idx]) else ''
+                        if 'BREAKFAST' in header_val.upper():
                             meal_types.append(('Breakfast', col_idx))
-                        elif 'MID-MORNING' in col_name.upper() or 'MID MORNING' in col_name.upper():
+                        elif 'MID-MORNING' in header_val.upper() or 'MID MORNING' in header_val.upper():
                             meal_types.append(('Mid-Morning', col_idx))
-                        elif 'LUNCH' in col_name.upper():
+                        elif 'LUNCH' in header_val.upper():
                             meal_types.append(('Lunch', col_idx))
-                        elif 'AFTERNOON' in col_name.upper() or 'SNACK' in col_name.upper():
+                        elif 'AFTERNOON' in header_val.upper() or 'SNACK' in header_val.upper():
                             meal_types.append(('Afternoon Snack', col_idx))
-                        elif 'DINNER' in col_name.upper():
+                        elif 'DINNER' in header_val.upper():
                             meal_types.append(('Dinner', col_idx))
-                        elif 'BEDTIME' in col_name.upper() or 'BED TIME' in col_name.upper():
+                        elif 'BEDTIME' in header_val.upper() or 'BED TIME' in header_val.upper():
                             meal_types.append(('Bedtime', col_idx))
                 
-                # Parse each row
-                for idx, row in df.iterrows():
+                # Parse each row starting from row 1 (skip header row)
+                for idx in range(1, len(df)):
+                    row = df.iloc[idx]
                     day = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else None
                     if not day or day.upper() in ['DAY', 'NAN', 'NONE', '']:
                         continue
