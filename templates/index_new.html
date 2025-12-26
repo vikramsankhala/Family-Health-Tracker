@@ -176,7 +176,7 @@
         </div>
         
         <div class="header">
-            <h1>🏥 Vikram Sankhala Health and Fitness Tracker</h1>
+            <h1>🏥 Family Health Tracker</h1>
             <p>Track Health, Diet, Exercise & Lifestyle</p>
         </div>
 
@@ -240,7 +240,6 @@
             loadHealthData();
             loadDietPlan();
             loadExercisePlan();
-            loadTodos();
         };
 
         async function checkAuth() {
@@ -318,12 +317,8 @@
 
         function setCategory(category) {
             currentCategory = category;
-            document.querySelectorAll('.category-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (btn.textContent.toLowerCase().includes(category)) {
-                    btn.classList.add('active');
-                }
-            });
+            document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
         }
 
         async function loadHealthData() {
@@ -491,195 +486,6 @@
         document.getElementById('ai-query').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') askAI();
         });
-
-        async function loadTodos() {
-            try {
-                const response = await fetch('/api/todos');
-                const data = await response.json();
-                if (data.success) {
-                    displayTodos(data.data);
-                }
-            } catch (error) {
-                document.getElementById('todo-list-container').innerHTML = `<div class="error">Error loading todos: ${error.message}</div>`;
-            }
-        }
-
-        function displayTodos(data) {
-            const container = document.getElementById('todo-list-container');
-            if (!data || data.length === 0) {
-                container.innerHTML = '<p>No tasks yet. Add your first task!</p>';
-                return;
-            }
-
-            let html = '<table><thead><tr><th>Task</th><th>Description</th><th>Priority</th><th>Status</th><th>Due Date</th>';
-            if (isAuthenticated) html += '<th>Actions</th>';
-            html += '</tr></thead><tbody>';
-
-            data.forEach(todo => {
-                const priorityClass = todo.priority === 'high' ? 'style="color: #dc3545; font-weight: bold;"' : 
-                                     todo.priority === 'medium' ? 'style="color: #ffc107;"' : 
-                                     'style="color: #28a745;"';
-                const statusClass = todo.status === 'completed' ? 'style="color: #28a745; font-weight: bold;"' : '';
-                
-                html += `<tr>
-                    <td>${todo.task || ''}</td>
-                    <td>${todo.description || ''}</td>
-                    <td ${priorityClass}>${todo.priority || ''}</td>
-                    <td ${statusClass}>${todo.status || ''}</td>
-                    <td>${todo.due_date || ''}</td>`;
-                if (isAuthenticated) {
-                    html += `<td>
-                        <button class="btn btn-success" onclick="updateTodoStatus(${todo.id}, '${todo.status === 'completed' ? 'pending' : 'completed'}')" style="padding: 5px 10px; font-size: 0.8em;">
-                            ${todo.status === 'completed' ? 'Mark Pending' : 'Mark Complete'}
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteTodo(${todo.id})" style="padding: 5px 10px; font-size: 0.8em; margin-left: 5px;">Delete</button>
-                    </td>`;
-                }
-                html += '</tr>';
-            });
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-        }
-
-        function showTodoForm() {
-            if (!isAuthenticated) {
-                showLoginModal();
-                return;
-            }
-            document.getElementById('todo-form').style.display = 'block';
-            document.getElementById('add-todo-btn').style.display = 'none';
-        }
-
-        function cancelTodoForm() {
-            document.getElementById('todo-form').style.display = 'none';
-            document.getElementById('add-todo-btn').style.display = 'block';
-            document.getElementById('todo-task').value = '';
-            document.getElementById('todo-description').value = '';
-            document.getElementById('todo-priority').value = 'medium';
-            document.getElementById('todo-due-date').value = '';
-        }
-
-        async function addTodo() {
-            if (!isAuthenticated) {
-                showLoginModal();
-                return;
-            }
-
-            const task = document.getElementById('todo-task').value;
-            if (!task.trim()) {
-                alert('Please enter a task');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/todos', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Session-ID': sessionId
-                    },
-                    body: JSON.stringify({
-                        task: task,
-                        description: document.getElementById('todo-description').value,
-                        priority: document.getElementById('todo-priority').value,
-                        due_date: document.getElementById('todo-due-date').value || null
-                    })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    cancelTodoForm();
-                    loadTodos();
-                } else {
-                    if (data.auth_required) {
-                        showLoginModal();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                }
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        async function updateTodoStatus(todoId, newStatus) {
-            if (!isAuthenticated) {
-                showLoginModal();
-                return;
-            }
-
-            try {
-                // First get the todo to update
-                const getResponse = await fetch('/api/todos');
-                const getData = await getResponse.json();
-                const todo = getData.data.find(t => t.id === todoId);
-                
-                if (!todo) {
-                    alert('Todo not found');
-                    return;
-                }
-
-                const response = await fetch(`/api/todos/${todoId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Session-ID': sessionId
-                    },
-                    body: JSON.stringify({
-                        task: todo.task,
-                        description: todo.description,
-                        priority: todo.priority,
-                        status: newStatus,
-                        due_date: todo.due_date
-                    })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    loadTodos();
-                } else {
-                    if (data.auth_required) {
-                        showLoginModal();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                }
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
-
-        async function deleteTodo(todoId) {
-            if (!isAuthenticated) {
-                showLoginModal();
-                return;
-            }
-
-            if (!confirm('Are you sure you want to delete this task?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`/api/todos/${todoId}`, {
-                    method: 'DELETE',
-                    headers: { 'X-Session-ID': sessionId }
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    loadTodos();
-                } else {
-                    if (data.auth_required) {
-                        showLoginModal();
-                    } else {
-                        alert('Error: ' + data.error);
-                    }
-                }
-            } catch (error) {
-                alert('Error: ' + error.message);
-            }
-        }
 
         window.onclick = function(event) {
             const modal = document.getElementById('loginModal');

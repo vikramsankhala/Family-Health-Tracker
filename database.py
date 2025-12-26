@@ -67,6 +67,21 @@ def init_database():
         )
     ''')
     
+    # To Do List table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS todo_list (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task TEXT NOT NULL,
+            description TEXT,
+            priority TEXT DEFAULT 'medium',
+            status TEXT DEFAULT 'pending',
+            due_date TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_by TEXT
+        )
+    ''')
+    
     # Comments table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS comments (
