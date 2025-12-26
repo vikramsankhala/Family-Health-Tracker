@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Streaming Integration - Vikram Sankhala Health Tracker</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .section {
+            margin-bottom: 50px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .section h2 {
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+        .section h3 {
+            color: #333;
+            font-size: 1.5em;
+            margin: 25px 0 15px 0;
+        }
+        .diagram {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 2px solid #e9ecef;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .tech-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #667eea;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .tech-card h4 {
+            color: #667eea;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+        .pros-cons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        .pros, .cons {
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .pros {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        .cons {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        .pros ul, .cons ul {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        .code-block {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-block .keyword { color: #c678dd; }
+        .code-block .string { color: #98c379; }
+        .code-block .comment { color: #5c6370; }
+        .flow-diagram {
+            text-align: center;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .flow-box {
+            display: inline-block;
+            padding: 15px 25px;
+            margin: 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .flow-arrow {
+            font-size: 2em;
+            color: #667eea;
+            margin: 0 10px;
+        }
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e9ecef;
+        }
+        .comparison-table th {
+            background: #667eea;
+            color: white;
+        }
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .nav {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 Mobile Streaming Integration</h1>
+            <p>Stream Health Data from Wearables via Mobile Apps</p>
+        </div>
+        
+        <div class="nav">
+            <a href="/" class="btn">← Back to Health Tracker</a>
+            <a href="WEARABLES_INTEGRATION.md" class="btn" target="_blank">View Wearables Guide</a>
+        </div>
+
+        <div class="content">
+            <!-- Overview -->
+            <div class="section">
+                <h2>🔄 Overview</h2>
+                <p style="font-size: 1.1em; margin-bottom: 20px;">
+                    Mobile apps act as a gateway between wearable devices and the Health Tracker application. 
+                    They use local communication technologies (BLE, NFC, WiFi Direct) to receive data from devices 
+                    and then transmit it to the cloud application via the internet.
+                </p>
+                
+                <div class="flow-diagram">
+                    <div class="flow-box">Wearable Device</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">Mobile App</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">Health Tracker API</div>
+                    <span class="flow-arrow">→</span>
+                    <div class="flow-box">Database</div>
+                </div>
+            </div>
+
+            <!-- Technology 1: BLE -->
+            <div class="section">
+                <h2>1. Bluetooth Low Energy (BLE)</h2>
+                
+                <div class="tech-card">
+                    <h4>📡 How BLE Works</h4>
+                    <p>BLE uses a client-server architecture where wearable devices act as <strong>peripherals</strong> 
+                    (servers) and mobile apps act as <strong>centrals</strong> (clients).</p>
+                    
+                    <div class="diagram">
+┌─────────────────────────────────────────────────────────────┐
+│              BLE Communication Architecture                  │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────┐                    ┌─────────────┐
+│  Peripheral │                    │   Central   │
+│  (Device)   │                    │ (Mobile App)│
+└──────┬──────┘                    └──────┬──────┘
+       │                                   │
+       │ 1. Advertise                      │
+       │    Service UUID                   │
+       │──────────────────────────────────▶│
+       │                                   │
+       │ 2. Scan & Discover                │
+       │◀──────────────────────────────────│
+       │                                   │
+       │ 3. Connection Request             │
+       │──────────────────────────────────▶│
+       │                                   │
+       │ 4. GATT Services Discovery        │
+       │◀──────────────────────────────────│
+       │                                   │
+       │ 5. Subscribe to Notifications     │
+       │──────────────────────────────────▶│
+       │                                   │
+       │ 6. Stream Data (Notifications)    │
+       │──────────────────────────────────▶│
+       │    (Continuous)                   │
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">🔧 Technical Specifications</h4>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Specification</th>
+                            <th>Value</th>
+                        </tr>
+                        <tr>
+                            <td>Range</td>
+                            <td>10-100 meters (line of sight)</td>
+                        </tr>
+                        <tr>
+                            <td>Power Consumption</td>
+                            <td>Very Low (battery-friendly)</td>
+                        </tr>
+                        <tr>
+                            <td>Data Rate</td>
+                            <td>Up to 1 Mbps</td>
+                        </tr>
+                        <tr>
+                            <td>Frequency</td>
+                            <td>2.4 GHz ISM band</td>
+                        </tr>
+                        <tr>
+                            <td>Connection Time</td>
+                            <td>&lt; 100ms</td>
+                        </tr>
+                    </table>
+                    
+                    <h4 style="margin-top: 25px;">📊 Data Flow: Device to Mobile</h4>
+                    <div class="diagram">
+Step 1: Device Advertisement
+Device broadcasts: "I am a Heart Rate Monitor (UUID: 0x180D)"
+
+Step 2: Mobile App Discovery
+Mobile scans → Finds device → Reads device name, RSSI
+
+Step 3: Connection Establishment
+Mobile requests connection → Device accepts → BLE link established
+
+Step 4: Service Discovery
+Mobile queries: "What services do you offer?"
+Device responds: "Heart Rate Service, Battery Service"
+
+Step 5: Characteristic Subscription
+Mobile subscribes to Heart Rate Measurement characteristic
+Device confirms subscription
+
+Step 6: Data Streaming
+Device sends notifications every second:
+  - Heart Rate: 72 bpm
+  - Heart Rate: 73 bpm
+  - Heart Rate: 74 bpm
+  ... (continuous stream)
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">📱 Mobile App Implementation</h4>
+                    <div class="code-block">
+<span class="comment">// React Native BLE Example</span>
+<span class="keyword">import</span> { BleManager } <span class="keyword">from</span> <span class="string">'react-native-ble-plx'</span>;
+
+<span class="keyword">const</span> manager = <span class="keyword">new</span> BleManager();
+
+<span class="comment">// 1. Start scanning for devices</span>
+manager.startDeviceScan(
+    [<span class="string">'0000180d-0000-1000-8000-00805f9b34fb'</span>], <span class="comment">// Heart Rate Service UUID</span>
+    <span class="keyword">null</span>,
+    (error, device) => {
+        <span class="keyword">if</span> (error) <span class="keyword">return</span>;
+        
+        <span class="comment">// 2. Connect to device</span>
+        device.connect()
+            .then(device => device.discoverAllServicesAndCharacteristics())
+            .then(device => {
+                <span class="comment">// 3. Subscribe to heart rate notifications</span>
+                <span class="keyword">return</span> device.monitorCharacteristicForService(
+                    <span class="string">'0000180d-0000-1000-8000-00805f9b34fb'</span>,
+                    <span class="string">'00002a37-0000-1000-8000-00805f9b34fb'</span>,
+                    (error, characteristic) => {
+                        <span class="keyword">if</span> (characteristic?.value) {
+                            <span class="keyword">const</span> heartRate = parseHeartRate(characteristic.value);
+                            sendToHealthTracker(heartRate);
+                        }
+                    }
+                );
+            });
+    }
+);
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">🌐 Mobile to Application Transfer</h4>
+                    <div class="diagram">
+Mobile App receives BLE data:
+  └─▶ Buffer in memory (queue)
+      └─▶ Process & validate
+          └─▶ Format for API
+              └─▶ HTTP POST to Health Tracker API
+                  └─▶ API validates & stores in database
+                      └─▶ Success response
+                          └─▶ Mobile app confirms receipt
+                    </div>
+                    
+                    <div class="code-block">
+<span class="comment">// Send data to Health Tracker API</span>
+<span class="keyword">async function</span> sendToHealthTracker(data) {
+    <span class="keyword">const</span> response = <span class="keyword">await</span> fetch(
+        <span class="string">'https://your-app.railway.app/api/stream/health-data'</span>,
+        {
+            method: <span class="string">'POST'</span>,
+            headers: {
+                <span class="string">'Content-Type'</span>: <span class="string">'application/json'</span>,
+                <span class="string">'Authorization'</span>: <span class="string">`Bearer ${authToken}`</span>
+            },
+            body: JSON.stringify({
+                device_id: <span class="string">'fitbit_abc123'</span>,
+                device_type: <span class="string">'heart_rate_monitor'</span>,
+                connection_type: <span class="string">'ble'</span>,
+                data: {
+                    heart_rate: data.heartRate,
+                    timestamp: <span class="keyword">new</span> Date().toISOString()
+                }
+            })
+        }
+    );
+    
+    <span class="keyword">const</span> result = <span class="keyword">await</span> response.json();
+    <span class="keyword">return</span> result.success;
+}
+                    </div>
+                    
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <strong>✅ Advantages</strong>
+                            <ul>
+                                <li>Low power consumption</li>
+                                <li>Works with most devices</li>
+                                <li>Real-time streaming</li>
+                                <li>No internet needed (device to mobile)</li>
+                                <li>Standardized protocol</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <strong>❌ Disadvantages</strong>
+                            <ul>
+                                <li>Limited range (10-100m)</li>
+                                <li>Requires pairing</li>
+                                <li>Platform-specific code</li>
+                                <li>Can interfere with other BLE devices</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technology 2: NFC -->
+            <div class="section">
+                <h2>2. Near Field Communication (NFC)</h2>
+                
+                <div class="tech-card">
+                    <h4>📡 How NFC Works</h4>
+                    <p>NFC uses electromagnetic induction to enable communication between devices when they are 
+                    very close together (&lt; 4cm). One device generates a radio frequency field that powers 
+                    the other device (passive mode).</p>
+                    
+                    <div class="diagram">
+┌─────────────────────────────────────────────────────────────┐
+│              NFC Communication Flow                          │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────┐                    ┌─────────────┐
+│  NFC Tag    │                    │ NFC Reader │
+│  (Device)   │                    │ (Mobile App)│
+└──────┬──────┘                    └──────┬──────┘
+       │                                   │
+       │ 1. Mobile generates RF field      │
+       │    (13.56 MHz)                    │
+       │◀──────────────────────────────────│
+       │                                   │
+       │ 2. Tag receives power & wakes up   │
+       │                                   │
+       │ 3. Tag responds with data         │
+       │──────────────────────────────────▶│
+       │    (NDEF message)                 │
+       │                                   │
+       │ 4. Mobile reads & processes       │
+       │                                   │
+       │ 5. Data sent to Health Tracker    │
+       │                                   │
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">🔧 Technical Specifications</h4>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Specification</th>
+                            <th>Value</th>
+                        </tr>
+                        <tr>
+                            <td>Range</td>
+                            <td>Up to 4 cm (very short)</td>
+                        </tr>
+                        <tr>
+                            <td>Power</td>
+                            <td>Passive (no battery needed for tag)</td>
+                        </tr>
+                        <tr>
+                            <td>Data Rate</td>
+                            <td>106-848 kbps</td>
+                        </tr>
+                        <tr>
+                            <td>Frequency</td>
+                            <td>13.56 MHz</td>
+                        </tr>
+                        <tr>
+                            <td>Transfer Time</td>
+                            <td>&lt; 1 second</td>
+                        </tr>
+                    </table>
+                    
+                    <h4 style="margin-top: 25px;">📊 Data Flow: Device to Mobile</h4>
+                    <div class="diagram">
+Step 1: Physical Contact/Tap
+User brings device close to mobile (&lt; 4cm)
+
+Step 2: RF Field Activation
+Mobile generates 13.56 MHz RF field
+Field powers NFC tag in device
+
+Step 3: Tag Response
+Tag wakes up and responds with NDEF message:
+  - Type: "application/vnd.health.data"
+  - Payload: {"blood_pressure": "120/80", "timestamp": "..."}
+  - Size: ~1-8 KB
+
+Step 4: Data Read
+Mobile reads NDEF message
+Parses JSON payload
+Extracts health data
+
+Step 5: Validation
+Mobile validates data format
+Checks timestamp
+Verifies device ID
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">📱 Mobile App Implementation</h4>
+                    <div class="code-block">
+<span class="comment">// React Native NFC Example</span>
+<span class="keyword">import</span> NfcManager, { NfcTech, Ndef } <span class="keyword">from</span> <span class="string">'react-native-nfc-manager'</span>;
+
+<span class="keyword">async function</span> readNfcTag() {
+    <span class="keyword">try</span> {
+        <span class="comment">// 1. Request NFC technology</span>
+        <span class="keyword">await</span> NfcManager.requestTechnology(NfcTech.Ndef);
+        
+        <span class="comment">// 2. Read tag</span>
+        <span class="keyword">const</span> tag = <span class="keyword">await</span> NfcManager.getTag();
+        <span class="keyword">const</span> ndefMessage = tag.ndefMessage;
+        
+        <span class="keyword">if</span> (ndefMessage && ndefMessage.length > 0) {
+            <span class="comment">// 3. Parse NDEF record</span>
+            <span class="keyword">const</span> record = ndefMessage[0];
+            <span class="keyword">const</span> payload = Ndef.text.decodePayload(record.payload);
+            <span class="keyword">const</span> healthData = JSON.parse(payload);
+            
+            <span class="comment">// 4. Send to Health Tracker</span>
+            <span class="keyword">await</span> sendToHealthTracker({
+                device_id: <span class="string">'bp_monitor_xyz'</span>,
+                connection_type: <span class="string">'nfc'</span>,
+                data: healthData
+            });
+        }
+    } <span class="keyword">catch</span> (error) {
+        console.error(<span class="string">'NFC read error:'</span>, error);
+    } <span class="keyword">finally</span> {
+        NfcManager.cancelTechnologyRequest();
+    }
+}
+
+<span class="comment">// Start listening for NFC tags</span>
+NfcManager.start();
+NfcManager.setEventListener(<span class="string">'TagDiscovered'</span>, readNfcTag);
+                    </div>
+                    
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <strong>✅ Advantages</strong>
+                            <ul>
+                                <li>Very secure (requires close proximity)</li>
+                                <li>No pairing required</li>
+                                <li>Works with passive devices</li>
+                                <li>Fast data transfer</li>
+                                <li>Simple tap-to-transfer</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <strong>❌ Disadvantages</strong>
+                            <ul>
+                                <li>Very short range (4cm)</li>
+                                <li>Requires physical contact</li>
+                                <li>Not suitable for continuous streaming</li>
+                                <li>Limited data capacity</li>
+                                <li>iOS limitations</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Technology 3: WiFi Direct -->
+            <div class="section">
+                <h2>3. WiFi Direct (WiFi P2P)</h2>
+                
+                <div class="tech-card">
+                    <h4>📡 How WiFi Direct Works</h4>
+                    <p>WiFi Direct creates a direct peer-to-peer connection between devices without requiring 
+                    a traditional WiFi access point. One device acts as the Group Owner (GO) and the other 
+                    as a client.</p>
+                    
+                    <div class="diagram">
+┌─────────────────────────────────────────────────────────────┐
+│           WiFi Direct Network Architecture                  │
+└─────────────────────────────────────────────────────────────┘
+
+                    ┌─────────────┐
+                    │ Group Owner │
+                    │  (Device)   │
+                    │ 192.168.49.1│
+                    └──────┬──────┘
+                           │
+            ┌──────────────┼──────────────┐
+            │              │              │
+      ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐
+      │  Client 1 │  │  Client 2 │  │  Client 3 │
+      │ (Mobile)  │  │ (Mobile)  │  │ (Tablet)  │
+      │192.168.49.2│  │192.168.49.3│  │192.168.49.4│
+      └───────────┘  └───────────┘  └───────────┘
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">🔧 Technical Specifications</h4>
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Specification</th>
+                            <th>Value</th>
+                        </tr>
+                        <tr>
+                            <td>Range</td>
+                            <td>Up to 200 meters</td>
+                        </tr>
+                        <tr>
+                            <td>Power</td>
+                            <td>Medium-High</td>
+                        </tr>
+                        <tr>
+                            <td>Data Rate</td>
+                            <td>Up to 250 Mbps</td>
+                        </tr>
+                        <tr>
+                            <td>Frequency</td>
+                            <td>2.4 GHz / 5 GHz</td>
+                        </tr>
+                        <tr>
+                            <td>Connection Time</td>
+                            <td>5-30 seconds</td>
+                        </tr>
+                    </table>
+                    
+                    <h4 style="margin-top: 25px;">📊 Data Flow: Device to Mobile</h4>
+                    <div class="diagram">
+Step 1: Group Formation
+Device creates WiFi Direct group
+SSID: "HealthDevice_ABC123"
+Password: "HealthPass123"
+
+Step 2: Device Discovery
+Mobile scans for WiFi Direct devices
+Finds "HealthDevice_ABC123"
+Displays available device
+
+Step 3: Connection
+Mobile connects to device WiFi Direct network
+Enters password
+Receives IP: 192.168.49.2
+
+Step 4: Service Discovery
+Mobile discovers device's HTTP server
+IP: 192.168.49.1:8080
+Service: Health Data API
+
+Step 5: Data Streaming
+Mobile makes HTTP GET request
+Device responds with JSON data
+Mobile processes and uploads to Health Tracker
+                    </div>
+                    
+                    <h4 style="margin-top: 25px;">📱 Mobile App Implementation</h4>
+                    <div class="code-block">
+<span class="comment">// Android WiFi Direct Example</span>
+<span class="keyword">import</span> WifiP2pManager <span class="keyword">from</span> <span class="string">'react-native-wifi-p2p'</span>;
+
+<span class="keyword">async function</span> connectToDevice() {
+    <span class="comment">// 1. Discover WiFi Direct peers</span>
+    <span class="keyword">const</span> peers = <span class="keyword">await</span> WifiP2pManager.discoverPeers();
+    
+    <span class="comment">// 2. Find health device</span>
+    <span class="keyword">const</span> device = peers.find(d => 
+        d.deviceName.includes(<span class="string">'HealthDevice'</span>)
+    );
+    
+    <span class="comment">// 3. Connect</span>
+    <span class="keyword">await</span> WifiP2pManager.connect(device.deviceAddress, <span class="string">'HealthPass123'</span>);
+    
+    <span class="comment">// 4. Wait for IP assignment</span>
+    <span class="keyword">await</span> waitForIP();
+    
+    <span class="comment">// 5. Connect to device's HTTP server</span>
+    <span class="keyword">const</span> response = <span class="keyword">await</span> fetch(
+        <span class="string">'http://192.168.49.1:8080/health-data'</span>
+    );
+    
+    <span class="keyword">const</span> healthData = <span class="keyword">await</span> response.json();
+    
+    <span class="comment">// 6. Send to Health Tracker</span>
+    <span class="keyword">await</span> sendToHealthTracker(healthData);
+}
+                    </div>
+                    
+                    <div class="pros-cons">
+                        <div class="pros">
+                            <strong>✅ Advantages</strong>
+                            <ul>
+                                <li>High data rate (250 Mbps)</li>
+                                <li>Good range (200m)</li>
+                                <li>Can connect multiple devices</li>
+                                <li>Standard TCP/IP protocols</li>
+                                <li>No internet required (local)</li>
+                            </ul>
+                        </div>
+                        <div class="cons">
+                            <strong>❌ Disadvantages</strong>
+                            <ul>
+                                <li>Higher power consumption</li>
+                                <li>More complex setup</li>
+                                <li>May disconnect from internet</li>
+                                <li>Limited iOS support</li>
+                                <li>Slower connection time</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Complete Data Flow -->
+            <div class="section">
+                <h2>🔄 Complete End-to-End Data Flow</h2>
+                
+                <div class="diagram" style="font-size: 0.9em;">
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Complete Streaming Architecture                       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────┐
+│  Wearable       │
+│  Device         │
+│  (Sensor)       │
+│                 │
+│  ┌───────────┐  │
+│  │ Collect   │  │
+│  │ Health    │  │
+│  │ Data      │  │
+│  └─────┬─────┘  │
+└────────┼────────┘
+         │
+         │ Local Communication
+         │ (BLE/NFC/WiFi Direct)
+         │
+         ▼
+┌─────────────────┐
+│  Mobile App     │
+│  (Gateway)      │
+│                 │
+│  ┌───────────┐  │
+│  │ Receive   │  │
+│  │ Data      │  │
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │ Buffer    │  │
+│  │ Queue     │  │
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │ Process   │  │
+│  │ & Validate│  │
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │ Format    │  │
+│  │ for API   │  │
+│  └─────┬─────┘  │
+└────────┼────────┘
+         │
+         │ Internet Connection
+         │ (HTTP/WebSocket)
+         │
+         ▼
+┌─────────────────┐
+│  Health Tracker │
+│  API Endpoint   │
+│                 │
+│  ┌───────────┐  │
+│  │ Validate  │  │
+│  │ Request   │  │
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │ Process   │  │
+│  │ Data      │  │
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │ Store in  │  │
+│  │ Database  │  │
+│  └─────┬─────┘  │
+│        │        │
+│  ┌─────▼─────┐  │
+│  │ Return    │  │
+│  │ Success   │  │
+│  └───────────┘  │
+└─────────────────┘
+                </div>
+            </div>
+
+            <!-- API Endpoints -->
+            <div class="section">
+                <h2>🔌 API Endpoints</h2>
+                
+                <div class="tech-card">
+                    <h4>POST /api/stream/health-data</h4>
+                    <p>Receive streaming health data from mobile app</p>
+                    
+                    <div class="code-block">
+<span class="comment">// Request</span>
+POST /api/stream/health-data
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+    <span class="string">"device_id"</span>: <span class="string">"fitbit_abc123"</span>,
+    <span class="string">"device_type"</span>: <span class="string">"heart_rate_monitor"</span>,
+    <span class="string">"connection_type"</span>: <span class="string">"ble"</span>,
+    <span class="string">"data"</span>: {
+        <span class="string">"heart_rate"</span>: 72,
+        <span class="string">"timestamp"</span>: <span class="string">"2025-01-15T10:30:00Z"</span>
+    }
+}
+
+<span class="comment">// Response</span>
+{
+    <span class="string">"success"</span>: <span class="keyword">true</span>,
+    <span class="string">"message"</span>: <span class="string">"Data received"</span>,
+    <span class="string">"timestamp"</span>: <span class="string">"2025-01-15T10:30:01Z"</span>
+}
+                    </div>
+                </div>
+                
+                <div class="tech-card">
+                    <h4>POST /api/stream/batch</h4>
+                    <p>Receive batch health data (multiple data points)</p>
+                    
+                    <div class="code-block">
+{
+    <span class="string">"device_id"</span>: <span class="string">"fitbit_abc123"</span>,
+    <span class="string">"data_points"</span>: [
+        {<span class="string">"heart_rate"</span>: 72, <span class="string">"timestamp"</span>: <span class="string">"..."</span>},
+        {<span class="string">"heart_rate"</span>: 73, <span class="string">"timestamp"</span>: <span class="string">"..."</span>},
+        {<span class="string">"heart_rate"</span>: 74, <span class="string">"timestamp"</span>: <span class="string">"..."</span>}
+    ]
+}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="section">
+                <h2>📊 Technology Comparison</h2>
+                
+                <table class="comparison-table">
+                    <tr>
+                        <th>Feature</th>
+                        <th>BLE</th>
+                        <th>NFC</th>
+                        <th>WiFi Direct</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Range</strong></td>
+                        <td>10-100m</td>
+                        <td>&lt; 4cm</td>
+                        <td>Up to 200m</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data Rate</strong></td>
+                        <td>1 Mbps</td>
+                        <td>848 kbps</td>
+                        <td>250 Mbps</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Power</strong></td>
+                        <td>Very Low</td>
+                        <td>Very Low</td>
+                        <td>High</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Setup Time</strong></td>
+                        <td>&lt; 100ms</td>
+                        <td>&lt; 1s</td>
+                        <td>5-30s</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Continuous Streaming</strong></td>
+                        <td>✅ Yes</td>
+                        <td>❌ No</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Pairing Required</strong></td>
+                        <td>✅ Yes</td>
+                        <td>❌ No</td>
+                        <td>✅ Yes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Best For</strong></td>
+                        <td>Continuous monitoring</td>
+                        <td>One-time transfers</td>
+                        <td>High bandwidth</td>
+                    </tr>
+                </table>
+            </div>
+
+            <!-- Implementation Guide -->
+            <div class="section">
+                <h2>🚀 Implementation Guide</h2>
+                
+                <h3>Step 1: Choose Technology</h3>
+                <p>Based on your use case:</p>
+                <ul style="margin-left: 30px; margin-top: 10px;">
+                    <li><strong>Continuous monitoring:</strong> Use BLE</li>
+                    <li><strong>One-time data transfer:</strong> Use NFC</li>
+                    <li><strong>High bandwidth needs:</strong> Use WiFi Direct</li>
+                </ul>
+                
+                <h3>Step 2: Develop Mobile App</h3>
+                <p>Create React Native or native mobile app with:</p>
+                <ul style="margin-left: 30px; margin-top: 10px;">
+                    <li>Device scanning/discovery</li>
+                    <li>Connection management</li>
+                    <li>Data buffering</li>
+                    <li>API integration</li>
+                </ul>
+                
+                <h3>Step 3: Configure API</h3>
+                <p>Set up streaming endpoints in Health Tracker application</p>
+                
+                <h3>Step 4: Test & Deploy</h3>
+                <p>Test with real devices and deploy mobile app</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

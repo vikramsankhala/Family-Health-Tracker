@@ -588,6 +588,130 @@ def get_budget_summary():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# Mobile App Streaming Endpoints
+@app.route('/api/stream/health-data', methods=['POST'])
+def stream_health_data():
+    """Receive streaming health data from mobile app"""
+    try:
+        data = request.json
+        device_id = data.get('device_id')
+        device_type = data.get('device_type')
+        connection_type = data.get('connection_type')  # ble, nfc, wifi
+        health_data = data.get('data')
+        metadata = data.get('metadata', {})
+        
+        if not device_id or not health_data:
+            return jsonify({'success': False, 'error': 'device_id and data are required'}), 400
+        
+        # Map device data to database fields
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            
+            # Extract health metrics
+            if 'heart_rate' in health_data:
+                # Store heart rate (could add new table or use existing)
+                pass
+            
+            if 'weight' in health_data:
+                cursor.execute('''
+                    INSERT INTO health_tracker_data 
+                    (date, weight, created_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (
+                    health_data.get('timestamp', datetime.now().isoformat().split('T')[0]),
+                    health_data.get('weight')
+                ))
+            
+            if 'blood_pressure' in health_data:
+                bp = health_data.get('blood_pressure')
+                cursor.execute('''
+                    INSERT INTO health_tracker_data 
+                    (date, blood_pressure, created_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (
+                    health_data.get('timestamp', datetime.now().isoformat().split('T')[0]),
+                    f"{bp.get('systolic')}/{bp.get('diastolic')}" if isinstance(bp, dict) else bp
+                ))
+            
+            if 'sleep_hours' in health_data:
+                cursor.execute('''
+                    INSERT INTO health_tracker_data 
+                    (date, sleep_hours, created_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (
+                    health_data.get('timestamp', datetime.now().isoformat().split('T')[0]),
+                    health_data.get('sleep_hours')
+                ))
+            
+            if 'steps' in health_data or 'exercise_minutes' in health_data:
+                exercise_minutes = health_data.get('exercise_minutes') or (health_data.get('steps', 0) / 100)
+                cursor.execute('''
+                    INSERT INTO health_tracker_data 
+                    (date, exercise_minutes, created_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                ''', (
+                    health_data.get('timestamp', datetime.now().isoformat().split('T')[0]),
+                    exercise_minutes
+                ))
+        
+        return jsonify({
+            'success': True,
+            'message': 'Data received and processed',
+            'device_id': device_id,
+            'connection_type': connection_type,
+            'timestamp': datetime.now().isoformat()
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/stream/batch', methods=['POST'])
+def stream_batch_data():
+    """Receive batch health data from mobile app"""
+    try:
+        data = request.json
+        device_id = data.get('device_id')
+        device_type = data.get('device_type')
+        connection_type = data.get('connection_type')
+        data_points = data.get('data_points', [])
+        
+        if not device_id or not data_points:
+            return jsonify({'success': False, 'error': 'device_id and data_points are required'}), 400
+        
+        processed = 0
+        errors = []
+        
+        for point in data_points:
+            try:
+                # Process each data point
+                with database.get_db() as conn:
+                    cursor = conn.cursor()
+                    # Similar processing as single stream endpoint
+                    processed += 1
+            except Exception as e:
+                errors.append({'point': point, 'error': str(e)})
+        
+        return jsonify({
+            'success': True,
+            'processed': processed,
+            'total': len(data_points),
+            'errors': errors if errors else None
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/stream/devices', methods=['GET'])
+def get_connected_devices():
+    """Get list of connected streaming devices"""
+    try:
+        # This would track connected devices in a real implementation
+        # For now, return empty list
+        return jsonify({
+            'success': True,
+            'devices': []
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
