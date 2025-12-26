@@ -999,6 +999,7 @@ def get_current_week():
                 return jsonify({
                     'success': True,
                     'current_week': {
+                        'id': row['id'],
                         'week_number': row['week_number'],
                         'week_start_date': row['week_start_date'],
                         'medication_dose': row['medication_dose'],
@@ -1014,7 +1015,30 @@ def get_current_week():
                     }
                 })
             else:
-                return jsonify({'success': False, 'error': 'No health plan found'}), 404
+                # Return first week if no current week found
+                cursor.execute('SELECT * FROM health_goals ORDER BY week_number LIMIT 1')
+                row = cursor.fetchone()
+                if row:
+                    return jsonify({
+                        'success': True,
+                        'current_week': {
+                            'id': row['id'],
+                            'week_number': row['week_number'],
+                            'week_start_date': row['week_start_date'],
+                            'medication_dose': row['medication_dose'],
+                            'medication_timing': row['medication_timing'],
+                            'target_biomarkers': row['target_biomarkers'],
+                            'diet_focus': row['diet_focus'],
+                            'exercise_plan': row['exercise_plan'],
+                            'sleep_target_hours': row['sleep_target_hours'],
+                            'stress_management': row['stress_management'],
+                            'key_milestones': row['key_milestones'],
+                            'progress_notes': row['progress_notes'],
+                            'status': row['status']
+                        }
+                    })
+                else:
+                    return jsonify({'success': False, 'error': 'No health plan found'}), 404
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

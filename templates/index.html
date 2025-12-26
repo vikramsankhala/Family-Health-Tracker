@@ -872,11 +872,20 @@
         async function loadHealthPlan() {
             try {
                 const response = await fetch('/api/health-plan');
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('API Error:', response.status, text);
+                    document.getElementById('health-plan-container').innerHTML = `<div class="error">Error loading health plan: HTTP ${response.status}</div>`;
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     displayHealthPlan(data.plan);
+                } else {
+                    document.getElementById('health-plan-container').innerHTML = `<div class="error">Error loading health plan: ${data.error || 'Unknown error'}</div>`;
                 }
             } catch (error) {
+                console.error('Error loading health plan:', error);
                 document.getElementById('health-plan-container').innerHTML = `<div class="error">Error loading health plan: ${error.message}</div>`;
             }
         }
@@ -956,13 +965,20 @@
         async function loadCurrentWeek() {
             try {
                 const response = await fetch('/api/health-plan/current');
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.error('API Error:', response.status, text);
+                    document.getElementById('current-week-content').innerHTML = `<div class="error">Error loading current week: HTTP ${response.status}</div>`;
+                    return;
+                }
                 const data = await response.json();
                 if (data.success) {
                     displayCurrentWeek(data.current_week);
                 } else {
-                    document.getElementById('current-week-content').innerHTML = '<p>No current week found. Plan may not be initialized.</p>';
+                    document.getElementById('current-week-content').innerHTML = `<div class="error">No current week found: ${data.error || 'Plan may not be initialized'}</div>`;
                 }
             } catch (error) {
+                console.error('Error loading current week:', error);
                 document.getElementById('current-week-content').innerHTML = `<div class="error">Error loading current week: ${error.message}</div>`;
             }
         }
