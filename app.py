@@ -1165,7 +1165,7 @@ def get_devices():
 def connect_device(device_type):
     """Initiate OAuth flow for device connection"""
     try:
-        if device_type.lower() not in ['apple', 'apple_watch', 'garmin']:
+        if device_type.lower() not in ['apple', 'apple_watch', 'garmin', 'fitbit', 'withings']:
             return jsonify({'success': False, 'error': 'Unsupported device type'}), 400
         
         integration = device_integrations.get_device_integration(device_type)
@@ -1269,6 +1269,95 @@ def garmin_callback():
         return jsonify({
             'success': True,
             'message': 'Garmin device connected successfully',
+            'device_id': device_id
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/fitbit/callback', methods=['GET'])
+def fitbit_callback():
+    """Handle Fitbit OAuth callback"""
+    try:
+        code = request.args.get('code')
+        state = request.args.get('state')
+        
+        if not code:
+            return jsonify({'success': False, 'error': 'Missing authorization code'}), 400
+        
+        integration = device_integrations.FitbitIntegration()
+        token_data = integration.exchange_code_for_token(code)
+        
+        if 'error' in token_data:
+            return jsonify({'success': False, 'error': token_data['error']}), 500
+        
+        # Store device connection
+        username = 'vikramsankhala'  # Default user
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO device_connections 
+                (device_type, device_name, account_id, access_token, refresh_token, token_expires_at, sync_enabled, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                'fitbit',
+                'Fitbit Device',
+                token_data.get('user_id'),
+                token_data.get('access_token'),
+                token_data.get('refresh_token'),
+                datetime.now() + timedelta(seconds=token_data.get('expires_in', 28800)),
+                1,
+                username
+            ))
+            device_id = cursor.lastrowid
+        
+        return jsonify({
+            'success': True,
+            'message': 'Fitbit device connected successfully',
+            'device_id': device_id
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/devices/withings/callback', methods=['GET'])
+def withings_callback():
+    """Handle Withings OAuth callback"""
+    try:
+        code = request.args.get('code')
+        state = request.args.get('state')
+        
+        if not code:
+            return jsonify({'success': False, 'error': 'Missing authorization code'}), 400
+        
+        integration = device_integrations.WithingsIntegration()
+        token_data = integration.exchange_code_for_token(code)
+        
+        if 'error' in token_data:
+            return jsonify({'success': False, 'error': token_data['error']}), 500
+        
+        # Store device connection
+        username = 'vikramsankhala'  # Default user
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO device_connections 
+                (device_type, device_name, account_id, access_token, refresh_token, token_expires_at, sync_enabled, metadata, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                'withings',
+                'Withings Device',
+                token_data.get('userid'),
+                token_data.get('access_token'),
+                token_data.get('refresh_token'),
+                datetime.now() + timedelta(seconds=token_data.get('expires_in', 10800)),
+                1,
+                json.dumps({'userid': token_data.get('userid')}),
+                username
+            ))
+            device_id = cursor.lastrowid
+        
+        return jsonify({
+            'success': True,
+            'message': 'Withings device connected successfully',
             'device_id': device_id
         })
     except Exception as e:

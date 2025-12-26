@@ -18,6 +18,18 @@ This application supports automatic health data synchronization from Apple Watch
 - **OAuth**: OAuth 1.0a
 - **Update Frequency**: Manual sync or scheduled sync
 
+### ⌚ Fitbit
+- **API**: Fitbit Web API
+- **Data Synced**: Steps, Heart Rate, Sleep, Weight, Activities
+- **OAuth**: OAuth 2.0
+- **Update Frequency**: Manual sync or scheduled sync
+
+### 💓 Withings
+- **API**: Withings API
+- **Data Synced**: Weight, Blood Pressure, Activity, Sleep
+- **OAuth**: OAuth 2.0
+- **Update Frequency**: Manual sync or scheduled sync
+
 ## Setup Instructions
 
 ### 1. Apple Watch Integration
@@ -101,12 +113,14 @@ GET /api/devices/{device_type}/connect
 ```
 Initiates OAuth flow. Returns authorization URL.
 
-**Device Types**: `apple`, `apple_watch`, `garmin`
+**Device Types**: `apple`, `apple_watch`, `garmin`, `fitbit`, `withings`
 
 ### OAuth Callbacks
 ```
 GET /api/devices/apple/callback
 GET /api/devices/garmin/callback
+GET /api/devices/fitbit/callback
+GET /api/devices/withings/callback
 ```
 Handles OAuth callbacks and stores device connection.
 
@@ -160,27 +174,46 @@ Disconnect and remove device connection.
 - **Heart Rate** → Notes (avg/max HR)
 - **Sleep** → Sleep Hours
 
+### Fitbit → Health Tracker
+- **Steps** → Exercise Minutes (steps / 20)
+- **Distance** → Notes (distance in km)
+- **Calories** → Notes (calories burned)
+- **Heart Rate** → Notes (resting HR)
+- **Sleep** → Sleep Hours
+- **Weight** → Weight (kg)
+
+### Withings → Health Tracker
+- **Weight** → Weight (kg)
+- **Blood Pressure** → Blood Pressure (systolic/diastolic)
+- **Steps** → Exercise Minutes (steps / 20)
+- **Activity** → Exercise Minutes + Notes
+- **Sleep** → Sleep Hours
+
 ## Database Schema
 
 ### device_connections
 - `id`: Primary key
-- `device_type`: apple_watch, garmin
+- `device_type`: apple_watch, garmin, fitbit, withings
 - `device_name`: Display name
+- `account_id`: User/account ID from provider
 - `access_token`: OAuth access token
 - `refresh_token`: OAuth refresh token
+- `token_expires_at`: Token expiration timestamp
 - `sync_enabled`: Boolean
 - `last_sync_at`: Timestamp
 - `sync_status`: pending, syncing, completed, error
 - `sync_error`: Error message if sync failed
+- `metadata`: JSON metadata (userid, etc.)
 
 ### device_sync_log
 - `id`: Primary key
 - `device_connection_id`: Foreign key
-- `sync_type`: apple_healthkit, garmin_connect
+- `sync_type`: apple_healthkit, garmin_connect, fitbit, withings
 - `records_synced`: Number of records
 - `sync_started_at`: Timestamp
 - `sync_completed_at`: Timestamp
 - `status`: pending, completed, error
+- `error_message`: Error details if sync failed
 
 ## Troubleshooting
 
@@ -225,6 +258,16 @@ Disconnect and remove device connection.
 - **API Access**: Free
 - **Rate Limits**: 1000 requests/day (free tier)
 
+### Fitbit
+- **Developer Account**: Free
+- **API Access**: Free
+- **Rate Limits**: 150 requests/hour per user (free tier)
+
+### Withings
+- **Developer Account**: Free
+- **API Access**: Free
+- **Rate Limits**: 200 requests/hour (free tier)
+
 ## Future Enhancements
 
 1. **Webhook Support**: Real-time data sync via webhooks
@@ -253,6 +296,12 @@ For issues or questions:
    GARMIN_CONSUMER_KEY=your_consumer_key
    GARMIN_CONSUMER_SECRET=your_consumer_secret
    GARMIN_REDIRECT_URI=https://your-app.railway.app/api/devices/garmin/callback
+   FITBIT_CLIENT_ID=your_client_id
+   FITBIT_CLIENT_SECRET=your_client_secret
+   FITBIT_REDIRECT_URI=https://your-app.railway.app/api/devices/fitbit/callback
+   WITHINGS_CLIENT_ID=your_client_id
+   WITHINGS_CLIENT_SECRET=your_client_secret
+   WITHINGS_REDIRECT_URI=https://your-app.railway.app/api/devices/withings/callback
    ```
 
 2. **Update Redirect URIs**:
@@ -277,6 +326,15 @@ For issues or questions:
    export APPLE_CLIENT_ID=your_client_id
    export APPLE_CLIENT_SECRET=your_client_secret
    export APPLE_REDIRECT_URI=http://your-ngrok-url.ngrok.io/api/devices/apple/callback
+   export GARMIN_CONSUMER_KEY=your_consumer_key
+   export GARMIN_CONSUMER_SECRET=your_consumer_secret
+   export GARMIN_REDIRECT_URI=http://your-ngrok-url.ngrok.io/api/devices/garmin/callback
+   export FITBIT_CLIENT_ID=your_client_id
+   export FITBIT_CLIENT_SECRET=your_client_secret
+   export FITBIT_REDIRECT_URI=http://your-ngrok-url.ngrok.io/api/devices/fitbit/callback
+   export WITHINGS_CLIENT_ID=your_client_id
+   export WITHINGS_CLIENT_SECRET=your_client_secret
+   export WITHINGS_REDIRECT_URI=http://your-ngrok-url.ngrok.io/api/devices/withings/callback
    ```
 
 ## API Rate Limits
@@ -290,6 +348,16 @@ For issues or questions:
 - **Requests**: 1000/day (free tier)
 - **Data Points**: Unlimited
 - **Refresh**: Tokens don't expire
+
+### Fitbit
+- **Requests**: 150/hour per user (free tier)
+- **Data Points**: Unlimited
+- **Refresh**: Tokens valid for 8 hours
+
+### Withings
+- **Requests**: 200/hour (free tier)
+- **Data Points**: Unlimited
+- **Refresh**: Tokens valid for 3 hours
 
 ## Best Practices
 
