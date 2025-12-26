@@ -4,13 +4,15 @@ A web-based collaborative health tracking application that allows family members
 
 ## Features
 
-- 📁 **File Tracking**: View and download all files from the Content directory
-- 💬 **Comments System**: Add comments and notes to any tracked file
-- 🤖 **AI Assistant**: Ask questions and get AI-powered health insights
-- 📊 **Report Generation**: Generate comprehensive health reports with AI assistance
+- 📊 **Health Data Tracking**: View health metrics in tabular format (weight, blood pressure, blood sugar, sleep, exercise)
+- 🍽️ **Diet Plan Management**: Track meals, calories, and macronutrients
+- 💪 **Exercise Plan Tracking**: Monitor workout routines and exercise schedules
+- ✅ **To Do List**: Manage health and fitness related tasks with priorities and due dates
+- 🤖 **AI Query Assistant**: Specialized AI assistant for Health, Food, Lifestyle, and Fitness queries
+- 📈 **Health Reports**: Generate comprehensive AI-powered health reports
+- ⌚ **Wearables Integration**: Support for Fitbit, Apple Watch, Garmin, and other health devices
 - 💰 **Monthly Budget Tracker**: Set monthly budgets and track expenses
 - 📝 **Expense Planner**: Add and manage expenses with categories including capital equipment
-- 📈 **Budget Analytics**: View budget vs actual spending with visual progress indicators
 - 🔐 **Authentication System**: Secure CRUD operations - only authenticated users can create, update, or delete data
 - 🗄️ **SQLite Database**: All data stored in a robust SQLite database
 - 👁️ **Public Read Access**: Family members can view all data without authentication
@@ -135,6 +137,7 @@ See `DEPLOYMENT_24x7.md` for detailed 24/7 deployment guide.
 .
 ├── app.py                 # Flask backend application
 ├── database.py           # Database initialization and management
+├── file_parser.py        # Excel file parsing and database population
 ├── templates/
 │   └── index.html        # Frontend HTML/CSS/JavaScript
 ├── Content/              # Health files directory
@@ -142,6 +145,7 @@ See `DEPLOYMENT_24x7.md` for detailed 24/7 deployment guide.
 ├── requirements.txt      # Python dependencies
 ├── Procfile             # Deployment configuration
 ├── runtime.txt          # Python version
+├── WEARABLES_INTEGRATION.md  # Wearable devices integration guide
 └── README.md            # This file
 ```
 

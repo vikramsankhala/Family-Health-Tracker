@@ -221,6 +221,55 @@
                 </div>
             </div>
 
+            <!-- Wearables & Sensors Integration -->
+            <div class="section">
+                <h2 class="section-title">⌚ Wearables & Sensor Integration</h2>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px;">
+                    <h3 style="margin-bottom: 15px;">Supported Devices</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <strong>Fitbit</strong><br>
+                            <small>Steps, Heart Rate, Sleep</small><br>
+                            <span style="color: #28a745;">$149 - $329</span>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <strong>Apple Watch</strong><br>
+                            <small>Comprehensive Health Data</small><br>
+                            <span style="color: #28a745;">$249 - $1,299</span>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <strong>Garmin</strong><br>
+                            <small>Fitness & Training Data</small><br>
+                            <span style="color: #28a745;">$149 - $1,499</span>
+                        </div>
+                        <div style="background: white; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <strong>Withings</strong><br>
+                            <small>BP Monitor & Smart Scale</small><br>
+                            <span style="color: #28a745;">$99 - $199</span>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin-bottom: 15px;">Integration Status</h3>
+                    <div id="device-status" style="margin-bottom: 20px;">
+                        <p>No devices connected. <a href="#" onclick="showIntegrationGuide()" style="color: #667eea;">View Integration Guide</a></p>
+                    </div>
+                    
+                    <div id="integration-guide" style="display: none; background: white; padding: 20px; border-radius: 8px; margin-top: 15px;">
+                        <h4>Integration Options:</h4>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            <li><strong>Manual Import:</strong> Export data from device app as CSV/JSON and upload</li>
+                            <li><strong>API Integration:</strong> Connect device account for automatic sync (requires development)</li>
+                            <li><strong>Third-party Apps:</strong> Use apps like Health Sync or Sync Solver</li>
+                        </ul>
+                        <p style="margin-top: 15px;"><strong>Budget Estimate:</strong> $600 - $1,400 for Fitbit + Withings integration</p>
+                        <p><strong>Development Time:</strong> 2-4 weeks</p>
+                        <p style="margin-top: 10px;"><a href="WEARABLES_INTEGRATION.md" target="_blank" style="color: #667eea;">📖 View Complete Integration Guide</a></p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="showIntegrationGuide()" style="margin-top: 10px;">View Integration Guide</button>
+                </div>
+            </div>
+
             <!-- Reports -->
             <div class="section">
                 <h2 class="section-title">📈 Health Reports</h2>
@@ -678,6 +727,15 @@
                 }
             } catch (error) {
                 alert('Error: ' + error.message);
+            }
+        }
+
+        function showIntegrationGuide() {
+            const guide = document.getElementById('integration-guide');
+            if (guide.style.display === 'none') {
+                guide.style.display = 'block';
+            } else {
+                guide.style.display = 'none';
             }
         }
 
