@@ -1,8 +1,8 @@
-# Device API Integration Guide - Apple Watch & Garmin
+# Device API Integration Guide - Apple Watch, Garmin, Fitbit & Withings
 
 ## Overview
 
-This application supports automatic health data synchronization from Apple Watch and Garmin devices through their respective APIs.
+This application supports automatic health data synchronization from Apple Watch, Garmin, Fitbit, and Withings devices through their respective APIs.
 
 ## Supported Devices
 
