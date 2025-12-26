@@ -16,11 +16,15 @@ CORS(app, supports_credentials=True)
 # Configuration
 CONTENT_DIR = 'Content'
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
-if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY environment variable is required")
 
-# Initialize OpenAI client
-client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize OpenAI client (only if API key is provided)
+client = None
+if OPENAI_API_KEY:
+    try:
+        client = OpenAI(api_key=OPENAI_API_KEY)
+    except Exception as e:
+        print(f"Warning: Could not initialize OpenAI client: {e}")
+        client = None
 
 # Ensure content directory exists
 os.makedirs(CONTENT_DIR, exist_ok=True)
@@ -215,6 +219,12 @@ def delete_comment(comment_id):
 def ai_query():
     """Handle AI assistant queries"""
     try:
+        if not client:
+            return jsonify({
+                'success': False, 
+                'error': 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            }), 503
+        
         data = request.json
         query = data.get('query')
         
@@ -281,6 +291,12 @@ def ai_query():
 def generate_report():
     """Generate a health report"""
     try:
+        if not client:
+            return jsonify({
+                'success': False, 
+                'error': 'OpenAI API key not configured. Please set OPENAI_API_KEY environment variable.'
+            }), 503
+        
         data = request.json
         report_type = data.get('type', 'summary')
         
