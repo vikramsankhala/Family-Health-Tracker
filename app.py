@@ -300,6 +300,60 @@ def delete_comment(comment_id):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/api/diet-plan', methods=['GET'])
+def get_diet_plan():
+    """Get diet plan data (public read access)"""
+    try:
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT day, meal_type, food_item, quantity, calories, protein, carbs, fats
+                FROM diet_plan
+                ORDER BY day, meal_type
+            ''')
+            rows = cursor.fetchall()
+            data = []
+            for row in rows:
+                data.append({
+                    'day': row['day'],
+                    'meal_type': row['meal_type'],
+                    'food_item': row['food_item'],
+                    'quantity': row['quantity'],
+                    'calories': row['calories'],
+                    'protein': row['protein'],
+                    'carbs': row['carbs'],
+                    'fats': row['fats']
+                })
+            return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/exercise-plan', methods=['GET'])
+def get_exercise_plan():
+    """Get exercise plan data (public read access)"""
+    try:
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT day, exercise_name, duration_minutes, sets, reps, notes
+                FROM exercise_plan
+                ORDER BY day
+            ''')
+            rows = cursor.fetchall()
+            data = []
+            for row in rows:
+                data.append({
+                    'day': row['day'],
+                    'exercise_name': row['exercise_name'],
+                    'duration_minutes': row['duration_minutes'],
+                    'sets': row['sets'],
+                    'reps': row['reps'],
+                    'notes': row['notes']
+                })
+            return jsonify({'success': True, 'data': data})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/ai/query', methods=['POST'])
 def ai_query():
     """Handle AI assistant queries with specialized categories"""
