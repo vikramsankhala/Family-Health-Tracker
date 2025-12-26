@@ -80,58 +80,64 @@ def index():
     return render_template('index.html')
 
 # Health Data CRUD Endpoints
-@app.route('/api/health-data', methods=['GET'])
-def get_health_data():
-    """Get all health tracker data (public read access)"""
-    try:
-        with database.get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT id, date, weight, blood_pressure, blood_sugar, sleep_hours, exercise_minutes, notes
-                FROM health_tracker_data
-                ORDER BY date DESC
-            ''')
-            rows = cursor.fetchall()
-            data = []
-            for row in rows:
-                data.append({
-                    'id': row['id'],
-                    'date': row['date'],
-                    'weight': row['weight'],
-                    'blood_pressure': row['blood_pressure'],
-                    'blood_sugar': row['blood_sugar'],
-                    'sleep_hours': row['sleep_hours'],
-                    'exercise_minutes': row['exercise_minutes'],
-                    'notes': row['notes']
-                })
-            return jsonify({'success': True, 'data': data})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-@app.route('/api/health-data', methods=['POST'])
-@require_auth
-def add_health_data():
-    """Add health tracker data (requires authentication)"""
-    try:
-        data = request.json
-        with database.get_db() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                INSERT INTO health_tracker_data 
-                (date, weight, blood_pressure, blood_sugar, sleep_hours, exercise_minutes, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                data.get('date'),
-                data.get('weight'),
-                data.get('blood_pressure'),
-                data.get('blood_sugar'),
-                data.get('sleep_hours'),
-                data.get('exercise_minutes'),
-                data.get('notes')
-            ))
-        return jsonify({'success': True})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+@app.route('/api/health-data', methods=['GET', 'POST'])
+def health_data():
+    """Get all health tracker data (GET) or add new data (POST)"""
+    if request.method == 'GET':
+        try:
+            with database.get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    SELECT id, date, weight, blood_pressure, blood_sugar, sleep_hours, exercise_minutes, notes
+                    FROM health_tracker_data
+                    ORDER BY date DESC
+                ''')
+                rows = cursor.fetchall()
+                data = []
+                for row in rows:
+                    data.append({
+                        'id': row['id'],
+                        'date': row['date'],
+                        'weight': row['weight'],
+                        'blood_pressure': row['blood_pressure'],
+                        'blood_sugar': row['blood_sugar'],
+                        'sleep_hours': row['sleep_hours'],
+                        'exercise_minutes': row['exercise_minutes'],
+                        'notes': row['notes']
+                    })
+                return jsonify({'success': True, 'data': data})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
+    else:  # POST
+        # Check authentication for POST
+        session_id = request.headers.get('X-Session-ID') or request.cookies.get('session_id')
+        if not session_id:
+            return jsonify({'success': False, 'error': 'Authentication required', 'auth_required': True}), 401
+        
+        username = database.verify_session(session_id)
+        if not username:
+            return jsonify({'success': False, 'error': 'Invalid or expired session', 'auth_required': True}), 401
+        
+        try:
+            data = request.json
+            with database.get_db() as conn:
+                cursor = conn.cursor()
+                cursor.execute('''
+                    INSERT INTO health_tracker_data 
+                    (date, weight, blood_pressure, blood_sugar, sleep_hours, exercise_minutes, notes)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    data.get('date'),
+                    data.get('weight'),
+                    data.get('blood_pressure'),
+                    data.get('blood_sugar'),
+                    data.get('sleep_hours'),
+                    data.get('exercise_minutes'),
+                    data.get('notes')
+                ))
+            return jsonify({'success': True})
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/health-data/<int:data_id>', methods=['PUT'])
 @require_auth
