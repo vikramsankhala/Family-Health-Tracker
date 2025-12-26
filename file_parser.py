@@ -48,7 +48,6 @@ def parse_health_tracker(filepath):
 def parse_diet_plan(filepath):
     """Parse Personalized North Indian Diet Plan Excel file"""
     try:
-        # Try to read all sheets
         xls = pd.ExcelFile(filepath)
         
         with database.get_db() as conn:
@@ -56,34 +55,52 @@ def parse_diet_plan(filepath):
             # Clear existing data
             cursor.execute('DELETE FROM diet_plan')
             
-            for sheet_name in xls.sheet_names:
-                df = pd.read_excel(filepath, sheet_name=sheet_name)
+            # Focus on the "Weekly Meal Plan" sheet
+            if 'Weekly Meal Plan' in xls.sheet_names:
+                df = pd.read_excel(filepath, sheet_name='Weekly Meal Plan', header=2)
                 
-                # Try to identify columns
-                for _, row in df.iterrows():
-                    try:
-                        meal_type = str(row.get('Meal', row.get('Meal Type', 'Unknown'))) if pd.notna(row.get('Meal', row.get('Meal Type'))) else 'Unknown'
-                        day = str(row.get('Day', row.get('Day of Week', 'Unknown'))) if pd.notna(row.get('Day', row.get('Day of Week'))) else 'Unknown'
-                        food_item = str(row.get('Food Item', row.get('Food', row.get('Item', '')))) if pd.notna(row.get('Food Item', row.get('Food', row.get('Item')))) else ''
-                        quantity = str(row.get('Quantity', row.get('Amount', ''))) if pd.notna(row.get('Quantity', row.get('Amount'))) else None
-                        calories = int(row.get('Calories', 0)) if pd.notna(row.get('Calories')) else None
-                        protein = float(row.get('Protein', 0)) if pd.notna(row.get('Protein')) else None
-                        carbs = float(row.get('Carbs', row.get('Carbohydrates', 0))) if pd.notna(row.get('Carbs', row.get('Carbohydrates'))) else None
-                        fats = float(row.get('Fats', row.get('Fat', 0))) if pd.notna(row.get('Fats', row.get('Fat'))) else None
-                        
-                        if food_item and food_item.strip():
-                            cursor.execute('''
-                                INSERT INTO diet_plan 
-                                (meal_type, day, food_item, quantity, calories, protein, carbs, fats)
-                                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                            ''', (meal_type, day, food_item, quantity, calories, protein, carbs, fats))
-                    except Exception as e:
+                # Get column names (meal types)
+                meal_types = []
+                if len(df.columns) > 0:
+                    # First column is DAY, rest are meal types
+                    for col_idx in range(1, len(df.columns)):
+                        col_name = str(df.columns[col_idx])
+                        if 'BREAKFAST' in col_name.upper():
+                            meal_types.append(('Breakfast', col_idx))
+                        elif 'MID-MORNING' in col_name.upper() or 'MID MORNING' in col_name.upper():
+                            meal_types.append(('Mid-Morning', col_idx))
+                        elif 'LUNCH' in col_name.upper():
+                            meal_types.append(('Lunch', col_idx))
+                        elif 'AFTERNOON' in col_name.upper() or 'SNACK' in col_name.upper():
+                            meal_types.append(('Afternoon Snack', col_idx))
+                        elif 'DINNER' in col_name.upper():
+                            meal_types.append(('Dinner', col_idx))
+                        elif 'BEDTIME' in col_name.upper() or 'BED TIME' in col_name.upper():
+                            meal_types.append(('Bedtime', col_idx))
+                
+                # Parse each row
+                for idx, row in df.iterrows():
+                    day = str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else None
+                    if not day or day.upper() in ['DAY', 'NAN', 'NONE', '']:
                         continue
+                    
+                    # Extract meals for each meal type
+                    for meal_type, col_idx in meal_types:
+                        if col_idx < len(row):
+                            food_item = str(row.iloc[col_idx]).strip() if pd.notna(row.iloc[col_idx]) else ''
+                            if food_item and food_item.upper() not in ['NAN', 'NONE', '']:
+                                cursor.execute('''
+                                    INSERT INTO diet_plan 
+                                    (meal_type, day, food_item, quantity, calories, protein, carbs, fats)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                ''', (meal_type, day, food_item, None, None, None, None, None))
             
             conn.commit()
-            print(f"Parsed diet plan from {len(xls.sheet_names)} sheets")
+            print(f"Parsed diet plan from Weekly Meal Plan sheet")
     except Exception as e:
         print(f"Error parsing diet plan: {e}")
+        import traceback
+        traceback.print_exc()
 
 def parse_exercise_plan(filepath):
     """Parse Personalized Weekly Exercise Plan Excel file"""
@@ -95,31 +112,66 @@ def parse_exercise_plan(filepath):
             # Clear existing data
             cursor.execute('DELETE FROM exercise_plan')
             
-            for sheet_name in xls.sheet_names:
-                df = pd.read_excel(filepath, sheet_name=sheet_name)
-                
-                for _, row in df.iterrows():
-                    try:
-                        day = str(row.get('Day', row.get('Day of Week', 'Unknown'))) if pd.notna(row.get('Day', row.get('Day of Week'))) else 'Unknown'
-                        exercise_name = str(row.get('Exercise', row.get('Exercise Name', row.get('Workout', '')))) if pd.notna(row.get('Exercise', row.get('Exercise Name', row.get('Workout')))) else ''
-                        duration_minutes = int(row.get('Duration', row.get('Duration (min)', 0))) if pd.notna(row.get('Duration', row.get('Duration (min)'))) else None
-                        sets = int(row.get('Sets', 0)) if pd.notna(row.get('Sets')) else None
-                        reps = int(row.get('Reps', row.get('Repetitions', 0))) if pd.notna(row.get('Reps', row.get('Repetitions'))) else None
-                        notes = str(row.get('Notes', '')) if pd.notna(row.get('Notes')) else None
+            # Parse Phase sheets (Phase 1, Phase 2, Phase 3)
+            phase_sheets = [s for s in xls.sheet_names if 'Phase' in s and 'Week' in s]
+            
+            current_day = None
+            for sheet_name in phase_sheets:
+                try:
+                    df = pd.read_excel(filepath, sheet_name=sheet_name, header=3)
+                    
+                    for idx, row in df.iterrows():
+                        # Check if this row indicates a new day
+                        time_of_day = str(row.get('Time of Day', '')).strip() if pd.notna(row.get('Time of Day')) else ''
+                        activity = str(row.get('Activity', '')).strip() if pd.notna(row.get('Activity')) else ''
+                        notes = str(row.get('Notes', '')).strip() if pd.notna(row.get('Notes')) else ''
                         
-                        if exercise_name and exercise_name.strip():
+                        # If Time of Day contains a day name, update current_day
+                        if time_of_day:
+                            day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+                            for day_name in day_names:
+                                if day_name.upper() in time_of_day.upper():
+                                    current_day = day_name
+                                    break
+                        
+                        # If we have an activity, insert it
+                        if activity and activity.upper() not in ['NAN', 'NONE', '']:
+                            # Extract duration from activity if possible
+                            duration_minutes = None
+                            if 'min' in activity.lower():
+                                import re
+                                match = re.search(r'(\d+)\s*min', activity.lower())
+                                if match:
+                                    duration_minutes = int(match.group(1))
+                            
+                            # Extract sets and reps if mentioned
+                            sets = None
+                            reps = None
+                            if 'sets' in activity.lower() or 'reps' in activity.lower():
+                                import re
+                                set_match = re.search(r'(\d+)\s*sets?', activity.lower())
+                                rep_match = re.search(r'(\d+)\s*reps?', activity.lower())
+                                if set_match:
+                                    sets = int(set_match.group(1))
+                                if rep_match:
+                                    reps = int(rep_match.group(1))
+                            
+                            day_to_use = current_day if current_day else sheet_name
                             cursor.execute('''
                                 INSERT INTO exercise_plan 
                                 (day, exercise_name, duration_minutes, sets, reps, notes)
                                 VALUES (?, ?, ?, ?, ?, ?)
-                            ''', (day, exercise_name, duration_minutes, sets, reps, notes))
-                    except Exception as e:
-                        continue
+                            ''', (day_to_use, activity, duration_minutes, sets, reps, notes))
+                except Exception as e:
+                    print(f"Error parsing sheet {sheet_name}: {e}")
+                    continue
             
             conn.commit()
-            print(f"Parsed exercise plan from {len(xls.sheet_names)} sheets")
+            print(f"Parsed exercise plan from {len(phase_sheets)} phase sheets")
     except Exception as e:
         print(f"Error parsing exercise plan: {e}")
+        import traceback
+        traceback.print_exc()
 
 def parse_all_files():
     """Parse all Excel files in Content directory"""
