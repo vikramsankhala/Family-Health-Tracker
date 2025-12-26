@@ -98,6 +98,27 @@ def init_database():
         )
     ''')
     
+    # Health Goals and Week-by-Week Plan table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS health_goals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            week_number INTEGER NOT NULL,
+            week_start_date TEXT,
+            medication_dose TEXT,
+            medication_timing TEXT,
+            target_biomarkers TEXT,
+            diet_focus TEXT,
+            exercise_plan TEXT,
+            sleep_target_hours REAL,
+            stress_management TEXT,
+            key_milestones TEXT,
+            progress_notes TEXT,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     # Comments table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS comments (
@@ -328,6 +349,28 @@ else:
                 reps INTEGER,
                 notes TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+    
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='health_goals'")
+    if not cursor.fetchone():
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS health_goals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                week_number INTEGER NOT NULL,
+                week_start_date TEXT,
+                medication_dose TEXT,
+                medication_timing TEXT,
+                target_biomarkers TEXT,
+                diet_focus TEXT,
+                exercise_plan TEXT,
+                sleep_target_hours REAL,
+                stress_management TEXT,
+                key_milestones TEXT,
+                progress_notes TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
     

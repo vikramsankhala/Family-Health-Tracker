@@ -9,6 +9,7 @@ import uuid
 from functools import wraps
 import database
 import file_parser
+import health_plan_creator
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
@@ -38,6 +39,19 @@ try:
     file_parser.parse_all_files()
 except Exception as e:
     print(f"Warning: Could not parse files on startup: {e}")
+
+# Initialize health plan on startup
+try:
+    # Check if health plan exists, if not create it
+    with database.get_db() as conn:
+        cursor = conn.cursor()
+        cursor.execute('SELECT COUNT(*) as count FROM health_goals')
+        count = cursor.fetchone()['count']
+        if count == 0:
+            health_plan_creator.create_health_plan()
+            print("Health plan initialized")
+except Exception as e:
+    print(f"Warning: Could not initialize health plan: {e}")
 
 # Authentication decorator
 def require_auth(f):
@@ -899,6 +913,108 @@ def get_cgm_stats():
             }
             
             return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/health-plan', methods=['GET'])
+def get_health_plan():
+    """Get the complete health plan"""
+    try:
+        week = request.args.get('week', type=int)
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            
+            if week:
+                cursor.execute('''
+                    SELECT * FROM health_goals WHERE week_number = ?
+                    ORDER BY week_number
+                ''', (week,))
+            else:
+                cursor.execute('''
+                    SELECT * FROM health_goals ORDER BY week_number
+                ''')
+            
+            rows = cursor.fetchall()
+            plan = []
+            for row in rows:
+                plan.append({
+                    'id': row['id'],
+                    'week_number': row['week_number'],
+                    'week_start_date': row['week_start_date'],
+                    'medication_dose': row['medication_dose'],
+                    'medication_timing': row['medication_timing'],
+                    'target_biomarkers': row['target_biomarkers'],
+                    'diet_focus': row['diet_focus'],
+                    'exercise_plan': row['exercise_plan'],
+                    'sleep_target_hours': row['sleep_target_hours'],
+                    'stress_management': row['stress_management'],
+                    'key_milestones': row['key_milestones'],
+                    'progress_notes': row['progress_notes'],
+                    'status': row['status']
+                })
+            
+            return jsonify({'success': True, 'plan': plan})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/health-plan/<int:week_id>', methods=['PUT'])
+@require_auth
+def update_health_plan_week(week_id):
+    """Update progress notes and status for a specific week"""
+    try:
+        data = request.json
+        progress_notes = data.get('progress_notes', '')
+        status = data.get('status', 'pending')
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE health_goals 
+                SET progress_notes = ?, status = ?, updated_at = datetime('now')
+                WHERE id = ?
+            ''', (progress_notes, status, week_id))
+            
+            return jsonify({'success': True, 'message': 'Health plan updated'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/health-plan/current', methods=['GET'])
+def get_current_week():
+    """Get the current week of the health plan"""
+    try:
+        today = datetime.now().date()
+        
+        with database.get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT * FROM health_goals 
+                WHERE week_start_date <= ?
+                ORDER BY week_number DESC
+                LIMIT 1
+            ''', (today.isoformat(),))
+            
+            row = cursor.fetchone()
+            if row:
+                return jsonify({
+                    'success': True,
+                    'current_week': {
+                        'week_number': row['week_number'],
+                        'week_start_date': row['week_start_date'],
+                        'medication_dose': row['medication_dose'],
+                        'medication_timing': row['medication_timing'],
+                        'target_biomarkers': row['target_biomarkers'],
+                        'diet_focus': row['diet_focus'],
+                        'exercise_plan': row['exercise_plan'],
+                        'sleep_target_hours': row['sleep_target_hours'],
+                        'stress_management': row['stress_management'],
+                        'key_milestones': row['key_milestones'],
+                        'progress_notes': row['progress_notes'],
+                        'status': row['status']
+                    }
+                })
+            else:
+                return jsonify({'success': False, 'error': 'No health plan found'}), 404
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 

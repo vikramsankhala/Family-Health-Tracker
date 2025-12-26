@@ -203,6 +203,28 @@
                 <div id="cgm-stats-container" style="margin-top: 20px;"></div>
             </div>
 
+            <!-- 16-Week Health Plan -->
+            <div class="section">
+                <h2 class="section-title">🎯 16-Week Health Plan: Goal - 1mg Risperidone + Normal Biomarkers</h2>
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">📋 Plan Overview</h3>
+                    <p style="margin-bottom: 10px;"><strong>Goal:</strong> Reach 1mg Risperidone at night only + All normal biomarkers</p>
+                    <p style="margin-bottom: 10px;"><strong>Duration:</strong> 16 weeks (4 months)</p>
+                    <p style="margin-bottom: 10px;"><strong>Focus Areas:</strong> Medication reduction, Diet optimization, Exercise, Sleep, Stress management</p>
+                    <button class="btn btn-light" onclick="loadHealthPlan()" style="margin-right: 10px; margin-top: 10px;">View Full Plan</button>
+                    <button class="btn btn-light" onclick="loadCurrentWeek()" style="margin-top: 10px;">View Current Week</button>
+                </div>
+                <div id="current-week-container" style="background: #fff3cd; padding: 20px; border-radius: 10px; margin-bottom: 20px; border-left: 5px solid #ffc107;">
+                    <h3 style="margin-bottom: 15px;">📅 Current Week</h3>
+                    <div id="current-week-content">
+                        <div class="loading">Loading current week...</div>
+                    </div>
+                </div>
+                <div id="health-plan-container">
+                    <div class="loading">Loading health plan...</div>
+                </div>
+            </div>
+
             <!-- Diet Plan -->
             <div class="section">
                 <h2 class="section-title">🍽️ Diet Plan</h2>
@@ -303,6 +325,7 @@
             loadHealthData();
             loadDietPlan();
             loadExercisePlan();
+            loadCurrentWeek();
             loadTodos();
         };
 
@@ -844,6 +867,163 @@
             } catch (error) {
                 statsDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             }
+        }
+
+        async function loadHealthPlan() {
+            try {
+                const response = await fetch('/api/health-plan');
+                const data = await response.json();
+                if (data.success) {
+                    displayHealthPlan(data.plan);
+                }
+            } catch (error) {
+                document.getElementById('health-plan-container').innerHTML = `<div class="error">Error loading health plan: ${error.message}</div>`;
+            }
+        }
+
+        function displayHealthPlan(plan) {
+            const container = document.getElementById('health-plan-container');
+            if (!plan || plan.length === 0) {
+                container.innerHTML = '<p>No health plan available. Please contact administrator.</p>';
+                return;
+            }
+
+            let html = '<div style="display: grid; gap: 20px;">';
+            
+            plan.forEach(week => {
+                const statusColor = {
+                    'pending': '#ffc107',
+                    'in_progress': '#17a2b8',
+                    'completed': '#28a745',
+                    'delayed': '#dc3545'
+                }[week.status] || '#6c757d';
+                
+                html += `
+                    <div style="background: white; border: 2px solid ${statusColor}; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3 style="color: #667eea; margin: 0;">Week ${week.week_number} ${week.status === 'completed' ? '✅' : week.status === 'in_progress' ? '🔄' : '⏳'}</h3>
+                            <span style="background: ${statusColor}; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.9em; text-transform: uppercase;">${week.status}</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                <strong>📅 Start Date:</strong><br>${week.week_start_date || 'TBD'}
+                            </div>
+                            <div style="background: #e7f3ff; padding: 15px; border-radius: 8px;">
+                                <strong>💊 Medication:</strong><br>${week.medication_dose}<br><small>Timing: ${week.medication_timing}</small>
+                            </div>
+                            <div style="background: #fff3cd; padding: 15px; border-radius: 8px;">
+                                <strong>🎯 Target Biomarkers:</strong><br><small>${week.target_biomarkers}</small>
+                            </div>
+                            <div style="background: #d4edda; padding: 15px; border-radius: 8px;">
+                                <strong>😴 Sleep Target:</strong><br>${week.sleep_target_hours} hours
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>🍽️ Diet Focus:</strong>
+                            <p style="margin-top: 5px; color: #666;">${week.diet_focus}</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>💪 Exercise Plan:</strong>
+                            <p style="margin-top: 5px; color: #666;">${week.exercise_plan}</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>🧘 Stress Management:</strong>
+                            <p style="margin-top: 5px; color: #666;">${week.stress_management}</p>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <strong>⭐ Key Milestones:</strong>
+                            <p style="margin-top: 5px; color: #667eea; font-weight: bold;">${week.key_milestones}</p>
+                        </div>
+                        ${week.progress_notes ? `
+                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                            <strong>📝 Progress Notes:</strong>
+                            <p style="margin-top: 5px; color: #333;">${week.progress_notes}</p>
+                        </div>
+                        ` : ''}
+                        ${isAuthenticated ? `
+                        <div style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="editWeekPlan(${week.id})" style="margin-right: 10px;">Update Progress</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        async function loadCurrentWeek() {
+            try {
+                const response = await fetch('/api/health-plan/current');
+                const data = await response.json();
+                if (data.success) {
+                    displayCurrentWeek(data.current_week);
+                } else {
+                    document.getElementById('current-week-content').innerHTML = '<p>No current week found. Plan may not be initialized.</p>';
+                }
+            } catch (error) {
+                document.getElementById('current-week-content').innerHTML = `<div class="error">Error loading current week: ${error.message}</div>`;
+            }
+        }
+
+        function displayCurrentWeek(week) {
+            const container = document.getElementById('current-week-content');
+            container.innerHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div><strong>Week:</strong> ${week.week_number}</div>
+                    <div><strong>Start Date:</strong> ${week.week_start_date}</div>
+                    <div><strong>Status:</strong> <span style="color: ${week.status === 'completed' ? '#28a745' : week.status === 'in_progress' ? '#17a2b8' : '#ffc107'}">${week.status}</span></div>
+                </div>
+                <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px;">
+                    <strong>💊 This Week's Medication:</strong> ${week.medication_dose} (${week.medication_timing})
+                </div>
+                <div style="margin-top: 10px; padding: 15px; background: white; border-radius: 8px;">
+                    <strong>🎯 Target Biomarkers:</strong> ${week.target_biomarkers}
+                </div>
+                <div style="margin-top: 10px; padding: 15px; background: white; border-radius: 8px;">
+                    <strong>⭐ Key Milestone:</strong> ${week.key_milestones}
+                </div>
+            `;
+        }
+
+        function editWeekPlan(weekId) {
+            if (!isAuthenticated) {
+                showLoginModal();
+                return;
+            }
+            
+            const notes = prompt('Enter progress notes for this week:');
+            if (notes === null) return;
+            
+            const status = prompt('Update status (pending/in_progress/completed/delayed):', 'in_progress');
+            if (status === null) return;
+            
+            fetch(`/api/health-plan/${weekId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Session-ID': sessionId
+                },
+                body: JSON.stringify({
+                    progress_notes: notes,
+                    status: status
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    loadHealthPlan();
+                    loadCurrentWeek();
+                } else {
+                    if (data.auth_required) {
+                        showLoginModal();
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                }
+            })
+            .catch(error => alert('Error: ' + error.message));
         }
 
         window.onclick = function(event) {
